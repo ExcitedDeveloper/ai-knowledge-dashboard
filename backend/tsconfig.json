@@ -13,6 +13,9 @@
     "rootDir": "./",
     "resolveJsonModule": true
   },
+  "ts-node": {
+    "esm": true
+  },
   "include": [
     "**/*.ts"
   ],
