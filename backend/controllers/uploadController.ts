@@ -2,6 +2,8 @@ import { Request, Response } from 'express'
 import fs from 'fs'
 import pdfParse from 'pdf-parse'
 import mammoth from 'mammoth'
+import store, { UploadedFile } from '../lib/store'
+import { addFile } from './filesController'
 
 export const handleFileUpload = async (req: Request, res: Response) => {
   try {
@@ -30,7 +32,14 @@ export const handleFileUpload = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Unsupported file type' })
     }
 
-    // TODO: optionally save text to database here
+    const uploadedFile: UploadedFile = {
+      filename: file.originalname,
+      text: text,
+      timestamp: Date.now(),
+    }
+
+    // Save uploaded file information to the store
+    addFile(uploadedFile)
 
     // Return success response with extracted text
     res.status(200).json({

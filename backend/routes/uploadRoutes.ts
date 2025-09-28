@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import multer from 'multer'
-import { handleFileUpload } from '../controllers/uploadController.js'
+import { handleFileUpload } from '../controllers/uploadController'
 
 const router = Router()
 

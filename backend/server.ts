@@ -1,7 +1,7 @@
 // Import required dependencies
 import express from 'express'
 import cors from 'cors'
-import uploadRoutes from './routes/uploadRoutes.js'
+import uploadRoutes from './routes/uploadRoutes'
 
 // Create Express application instance
 const app = express()
