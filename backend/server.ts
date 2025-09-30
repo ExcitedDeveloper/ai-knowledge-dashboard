@@ -2,6 +2,7 @@
 import express from 'express'
 import cors from 'cors'
 import uploadRoutes from './routes/uploadRoutes'
+import filesRoutes from './routes/filesRoutes'
 
 // Create Express application instance
 const app = express()
@@ -13,8 +14,9 @@ app.use(cors())
 // Parse incoming JSON requests and make the data available in req.body
 app.use(express.json())
 
-// Mount upload endpoint - all routes in uploadRoutes will be prefixed with '/api/upload'
+// Mount routes
 app.use('/api/upload', uploadRoutes)
+app.use('/api/files', filesRoutes)
 
 // Set the port from environment variable or default to 3001
 const PORT = process.env.PORT || 3001
