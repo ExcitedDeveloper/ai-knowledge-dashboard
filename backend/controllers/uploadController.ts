@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import fs from 'fs'
 import pdfParse from 'pdf-parse'
 import mammoth from 'mammoth'
-import store, { UploadedFile } from '../lib/store'
+import { UploadedFile } from '../lib/store'
 import { addFile } from './filesController'
 
 export const handleFileUpload = async (req: Request, res: Response) => {

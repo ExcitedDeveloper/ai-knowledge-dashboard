@@ -1,6 +1,6 @@
 import store, { UploadedFile } from '../lib/store'
 
-export const addFile = (file: UploadedFile) => {
+export const addFile = (file: UploadedFile): void => {
   store.files.push(file)
 }
 

@@ -3,6 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import uploadRoutes from './routes/uploadRoutes'
 import filesRoutes from './routes/filesRoutes'
+import searchRoutes from './routes/searchRoutes'
 
 // Create Express application instance
 const app = express()
@@ -17,6 +18,7 @@ app.use(express.json())
 // Mount routes
 app.use('/api/upload', uploadRoutes)
 app.use('/api/files', filesRoutes)
+app.use('/api/search', searchRoutes)
 
 // Set the port from environment variable or default to 3001
 const PORT = process.env.PORT || 3001
