@@ -15,6 +15,9 @@ app.use(cors())
 // Parse incoming JSON requests and make the data available in req.body
 app.use(express.json())
 
+// Parse URL-encoded data (from HTML forms)
+app.use(express.urlencoded({ extended: true }))
+
 // Mount routes
 app.use('/api/upload', uploadRoutes)
 app.use('/api/files', filesRoutes)

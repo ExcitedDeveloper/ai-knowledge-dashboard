@@ -23,6 +23,7 @@ const createExcerpt = (documentText: string, query: string): string => {
 
   // 2. Find the first occurrence of the query in the text
   const index = lowerText.indexOf(lowerQuery)
+  console.log('query', query, 'index', index)
 
   if (index == -1) {
     // If no match, return just the first ~200 characters as fallback
@@ -41,6 +42,7 @@ const createExcerpt = (documentText: string, query: string): string => {
 
   // 5. Extract the substring
   let excerpt = documentText.substring(start, end)
+  console.log('excerpt', excerpt)
 
   // 6. Add ellipses to show it's a partial snippet
   if (start > 0) {
@@ -74,6 +76,7 @@ export const handleSearch = async (
   res: Response
 ): Promise<void> => {
   const query = req.query.q || ''
+  console.log('Searching for:', query)
 
   // TODO : Rather than returining the entire file, return only relevant excerpts
   // See claude.ai for its implementation
