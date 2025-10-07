@@ -3,14 +3,14 @@ import fs from 'fs'
 import pdfParse from 'pdf-parse'
 import mammoth from 'mammoth'
 import { UploadedFile } from '../lib/store'
-import { addFile } from './filesController'
+import { addFile, validateFile } from './filesController'
 
 export const handleFileUpload = async (req: Request, res: Response) => {
   try {
     const file = req.file
 
-    if (!file) {
-      return res.status(400).json({ error: 'No file uploaded' })
+    if (!validateFile(res, file)) {
+      return
     }
 
     let text: string = ''

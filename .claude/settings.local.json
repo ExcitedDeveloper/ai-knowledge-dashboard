@@ -15,7 +15,8 @@
       "Bash(npx tsx:*)",
       "Bash(npx tsc:*)",
       "Bash(npm test)",
-      "Bash(npm run test:coverage:*)"
+      "Bash(npm run test:coverage:*)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": []
