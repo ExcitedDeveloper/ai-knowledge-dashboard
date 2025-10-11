@@ -13,11 +13,13 @@ export default {
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   collectCoverageFrom: [
+    'server.ts',
     'controllers/**/*.ts',
     'routes/**/*.ts',
     'lib/**/*.ts',
     'utils/**/*.ts',
     'models/**/*.ts',
+    'types/**/*.ts',
     '!**/*.d.ts',
     '!**/*.test.ts',
     '!**/*.spec.ts',
@@ -34,6 +36,10 @@ export default {
   },
   testMatch: [
     '**/*.(test|spec).(js|ts)',
+  ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
   ],
   transform: {
     '^.+\\.ts$': ['ts-jest', {

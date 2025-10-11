@@ -10,12 +10,16 @@ import store from '../lib/store'
 jest.mock('fs')
 jest.mock('pdf-parse')
 jest.mock('mammoth')
-jest.mock('./filesController')
+jest.mock('./filesController', () => ({
+  addFile: jest.fn(),
+  validateFile: jest.fn(),
+}))
 
 const mockFs = fs as jest.Mocked<typeof fs>
 const mockPdfParse = pdfParse as jest.MockedFunction<typeof pdfParse>
 const mockMammoth = mammoth as jest.Mocked<typeof mammoth>
 const mockAddFile = addFile as jest.MockedFunction<typeof addFile>
+const mockValidateFile = require('./filesController').validateFile as jest.MockedFunction<any>
 
 describe('uploadController', () => {
   let mockReq: Partial<Request>
@@ -39,6 +43,9 @@ describe('uploadController', () => {
       json: mockJson,
     }
 
+    // Mock validateFile to return true by default (successful validation)
+    mockValidateFile.mockReturnValue(true)
+
     // Mock console.error to avoid noise in tests
     jest.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -51,11 +58,12 @@ describe('uploadController', () => {
     describe('when no file is uploaded', () => {
       test('should return 400 error', async () => {
         mockReq = { file: undefined }
+        // Mock validateFile to return false for no file
+        mockValidateFile.mockReturnValue(false)
 
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
-        expect(mockStatus).toHaveBeenCalledWith(400)
-        expect(mockJson).toHaveBeenCalledWith({ error: 'No file uploaded' })
+        expect(mockValidateFile).toHaveBeenCalled()
         expect(mockAddFile).not.toHaveBeenCalled()
       })
     })

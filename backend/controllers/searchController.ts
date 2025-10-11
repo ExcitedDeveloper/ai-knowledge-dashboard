@@ -2,11 +2,11 @@ import store, { UploadedFile } from '../lib/store'
 import { Request, Response } from 'express'
 import { SearchQuery } from '../types/search'
 
-const escapeRegex = (text: string): string => {
+export const escapeRegex = (text: string): string => {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-const highlight = (excerpt: string, query: string): string => {
+export const highlight = (excerpt: string, query: string): string => {
   // Case-insensitive regex for the query
   const regex = new RegExp('(' + escapeRegex(query) + ')', 'gi')
 
@@ -16,7 +16,7 @@ const highlight = (excerpt: string, query: string): string => {
   return highlighted
 }
 
-const createExcerpt = (documentText: string, query: string): string => {
+export const createExcerpt = (documentText: string, query: string): string => {
   // 1. Normalize text and query for case-insensitive search
   const lowerText = documentText.toLowerCase()
   const lowerQuery = query.toLowerCase()
@@ -59,7 +59,7 @@ const createExcerpt = (documentText: string, query: string): string => {
   return excerpt
 }
 
-const countMatches = (text: string, query: string): number => {
+export const countMatches = (text: string, query: string): number => {
   const regex = new RegExp(escapeRegex(query), 'gi')
   const matches = text.match(regex)
   return matches ? matches.length : 0
