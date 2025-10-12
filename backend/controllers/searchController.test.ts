@@ -43,7 +43,10 @@ describe('searchController', () => {
 
       await handleSearch(req, res)
 
-      expect(res.json).toHaveBeenCalledWith([])
+      expect(res.json).toHaveBeenCalledWith({
+        results: [],
+        message: 'No matches found for query.',
+      })
     })
 
     test('should return matching files with excerpts', async () => {
@@ -62,11 +65,13 @@ describe('searchController', () => {
 
       await handleSearch(req, res)
 
-      const expectedResult: SearchResult[] = [{
-        filename: 'test.pdf',
-        excerpt: expect.stringContaining('<mark>important</mark>'),
-        matches: 1,
-      }]
+      const expectedResult = {
+        results: [{
+          filename: 'test.pdf',
+          excerpt: expect.stringContaining('<mark>important</mark>'),
+          matches: 1,
+        }],
+      }
 
       expect(res.json).toHaveBeenCalledWith(expectedResult)
     })
@@ -87,11 +92,9 @@ describe('searchController', () => {
 
       await handleSearch(req, res)
 
-      // Empty query should return the file
-      const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result).toHaveLength(1)
-      expect(result[0].filename).toBe('test.pdf')
-      expect(result[0].excerpt).toContain('S') // Check for partial content since it gets highlighted
+      // Empty query should return error
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(res.json).toHaveBeenCalledWith({ error: 'Missing or empty search query.' })
     })
 
     test('should handle multiple files with matches', async () => {
@@ -123,9 +126,10 @@ describe('searchController', () => {
       await handleSearch(req, res)
 
       const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result).toHaveLength(2)
-      expect(result[0].filename).toBe('file1.pdf')
-      expect(result[1].filename).toBe('file2.pdf')
+      expect(result.results).toHaveLength(2)
+      expect(result.results[0].filename).toBe('file1.pdf')
+      expect(result.results[1].filename).toBe('file2.pdf')
+      expect(result.message).toBeUndefined()
     })
 
     test('should handle case-insensitive search', async () => {
@@ -145,8 +149,8 @@ describe('searchController', () => {
       await handleSearch(req, res)
 
       const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result).toHaveLength(1)
-      expect(result[0].matches).toBe(3)
+      expect(result.results).toHaveLength(1)
+      expect(result.results[0].matches).toBe(3)
     })
 
     test('should create proper excerpts with context', async () => {
@@ -170,8 +174,57 @@ describe('searchController', () => {
       await handleSearch(req, res)
 
       const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result[0].excerpt).toContain('...')
-      expect(result[0].excerpt).toContain('<mark>keyword</mark>')
+      expect(result.results[0].excerpt).toContain('...')
+      expect(result.results[0].excerpt).toContain('<mark>keyword</mark>')
+    })
+
+    test('should include message when no matches found', async () => {
+      const mockFiles: UploadedFile[] = [
+        {
+          filename: 'file1.pdf',
+          text: 'JavaScript is great',
+          timestamp: Date.now(),
+        },
+        {
+          filename: 'file2.pdf',
+          text: 'Python is awesome',
+          timestamp: Date.now() + 1000,
+        },
+      ]
+
+      store.files = mockFiles
+
+      const req = {
+        query: { q: 'nonexistent' },
+      } as Request<{}, {}, {}, SearchQuery>
+      const res = mockResponse()
+
+      await handleSearch(req, res)
+
+      const result = (res.json as jest.Mock).mock.calls[0][0]
+      expect(result.results).toHaveLength(0)
+      expect(result.message).toBe('No matches found for query.')
+    })
+
+    test('should not include message when matches are found', async () => {
+      const mockFile: UploadedFile = {
+        filename: 'test.pdf',
+        text: 'This has a match',
+        timestamp: Date.now(),
+      }
+
+      store.files = [mockFile]
+
+      const req = {
+        query: { q: 'match' },
+      } as Request<{}, {}, {}, SearchQuery>
+      const res = mockResponse()
+
+      await handleSearch(req, res)
+
+      const result = (res.json as jest.Mock).mock.calls[0][0]
+      expect(result.results).toHaveLength(1)
+      expect(result.message).toBeUndefined()
     })
   })
 

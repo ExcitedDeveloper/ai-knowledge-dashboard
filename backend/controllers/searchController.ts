@@ -75,21 +75,42 @@ export const handleSearch = async (
   req: Request<{}, {}, {}, SearchQuery>,
   res: Response
 ): Promise<void> => {
-  const query = req.query.q || ''
-  console.log('Searching for:', query)
+  if (!req.query.q || req.query.q.trim() === '') {
+    res.status(400).json({ error: 'Missing or empty search query.' })
+    return
+  }
 
-  // TODO : Rather than returining the entire file, return only relevant excerpts
-  // See claude.ai for its implementation
-  const files = store.files.reduce((acc: SearchResult[], file) => {
-    if (file.text.includes(query)) {
-      acc.push({
-        filename: file.filename,
-        excerpt: createExcerpt(file.text, query),
-        matches: countMatches(file.text, query),
-      })
+  if (store.files.length <= 0) {
+    res.json([])
+    return
+  }
+
+  try {
+    const query = req.query.q
+
+    const files = store.files.reduce((acc: SearchResult[], file) => {
+      if (file.text.includes(query)) {
+        acc.push({
+          filename: file.filename,
+          excerpt: createExcerpt(file.text, query),
+          matches: countMatches(file.text, query),
+        })
+      }
+      return acc
+    }, [])
+
+    const response: { results: SearchResult[]; message?: string } = {
+      results: files,
     }
-    return acc
-  }, [])
 
-  res.json(files)
+    if (files.length === 0) {
+      response.message = 'No matches found for query.'
+    }
+
+    res.json(response)
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: 'An unexpected error occurred during search.' })
+  }
 }
