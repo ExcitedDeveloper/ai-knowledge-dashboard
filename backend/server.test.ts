@@ -61,19 +61,19 @@ describe('server', () => {
   })
 
   test('should mount upload routes at /api/upload', () => {
-    // Check that routes were mounted (6 calls: cors, json, urlencoded, upload, files, search)
-    expect(mockUse).toHaveBeenCalledTimes(6)
-    expect(mockUse.mock.calls[3][0]).toBe('/api/upload')
+    // Check that routes were mounted (7 calls: cors, json, urlencoded, logging middleware, upload, files, search)
+    expect(mockUse).toHaveBeenCalledTimes(7)
+    expect(mockUse.mock.calls[4][0]).toBe('/api/upload')
   })
 
   test('should mount files routes at /api/files', () => {
-    expect(mockUse).toHaveBeenCalledTimes(6)
-    expect(mockUse.mock.calls[4][0]).toBe('/api/files')
+    expect(mockUse).toHaveBeenCalledTimes(7)
+    expect(mockUse.mock.calls[5][0]).toBe('/api/files')
   })
 
   test('should mount search routes at /api/search', () => {
-    expect(mockUse).toHaveBeenCalledTimes(6)
-    expect(mockUse.mock.calls[5][0]).toBe('/api/search')
+    expect(mockUse).toHaveBeenCalledTimes(7)
+    expect(mockUse.mock.calls[6][0]).toBe('/api/search')
   })
 
   test('should start server and listen on port', () => {

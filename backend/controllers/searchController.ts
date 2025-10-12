@@ -1,6 +1,7 @@
 import store, { UploadedFile } from '../lib/store'
 import { Request, Response } from 'express'
 import { SearchQuery } from '../types/search'
+import { logInfo, logError } from '../utils/logger'
 
 export const escapeRegex = (text: string): string => {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -23,7 +24,6 @@ export const createExcerpt = (documentText: string, query: string): string => {
 
   // 2. Find the first occurrence of the query in the text
   const index = lowerText.indexOf(lowerQuery)
-  console.log('query', query, 'index', index)
 
   if (index == -1) {
     // If no match, return just the first ~200 characters as fallback
@@ -42,7 +42,6 @@ export const createExcerpt = (documentText: string, query: string): string => {
 
   // 5. Extract the substring
   let excerpt = documentText.substring(start, end)
-  console.log('excerpt', excerpt)
 
   // 6. Add ellipses to show it's a partial snippet
   if (start > 0) {
@@ -87,6 +86,7 @@ export const handleSearch = async (
 
   try {
     const query = req.query.q
+    logInfo(`Search query: "${query}"`)
 
     const files = store.files.reduce((acc: SearchResult[], file) => {
       if (file.text.includes(query)) {
@@ -109,6 +109,7 @@ export const handleSearch = async (
 
     res.json(response)
   } catch (error) {
+    logError('Search failed: Unexpected error', error)
     res
       .status(500)
       .json({ error: 'An unexpected error occurred during search.' })

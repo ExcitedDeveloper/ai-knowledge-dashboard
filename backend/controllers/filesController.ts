@@ -1,5 +1,6 @@
 import { Response } from 'express'
 import store, { UploadedFile } from '../lib/store'
+import { logInfo } from '../utils/logger'
 
 const ALLOWED_FILE_TYPES = ['txt'] as const
 export type AllowedFileTypes = (typeof ALLOWED_FILE_TYPES)[number]
@@ -13,6 +14,7 @@ export const addFile = (file: UploadedFile): void => {
 }
 
 export const getFiles = (): UploadedFile[] => {
+  logInfo('Files list requested')
   return store.files
 }
 

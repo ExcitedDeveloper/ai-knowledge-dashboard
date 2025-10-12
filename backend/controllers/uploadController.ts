@@ -4,6 +4,7 @@ import pdfParse from 'pdf-parse'
 import mammoth from 'mammoth'
 import { UploadedFile } from '../lib/store'
 import { addFile, validateFile } from './filesController'
+import { logInfo, logError } from '../utils/logger'
 
 export const handleFileUpload = async (req: Request, res: Response) => {
   try {
@@ -41,13 +42,15 @@ export const handleFileUpload = async (req: Request, res: Response) => {
     // Save uploaded file information to the store
     addFile(uploadedFile)
 
+    logInfo(`File uploaded: ${file.originalname}`)
+
     // Return success response with extracted text
     res.status(200).json({
       filename: file.originalname,
       text: text,
     })
   } catch (err) {
-    console.error(err)
+    logError('Upload failed: Server error', err)
     res.status(500).json({ error: 'Server error' })
   }
 }
