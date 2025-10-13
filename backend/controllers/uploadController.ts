@@ -5,7 +5,53 @@ import mammoth from 'mammoth'
 import { UploadedFile } from '../lib/store'
 import { addFile, validateFile } from './filesController'
 import { logInfo, logError } from '../utils/logger'
+import OpenAI from 'openai'
 
+/**
+ * Creates an embedding vector for the given text using OpenAI's embedding model.
+ * @param text - The text to generate an embedding for
+ * @returns Promise resolving to an array of numbers representing the embedding vector
+ */
+const createEmbedding = async (text: string): Promise<number[]> => {
+  try {
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY!,
+    })
+
+    const res = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: text,
+    })
+
+    return res.data[0].embedding
+  } catch (err) {
+    logError('Failed to create embedding', err)
+    throw err
+  }
+}
+
+/**
+ * Constructs an UploadedFile object with metadata and embedding from the uploaded file.
+ * @param file - The Multer file object containing file metadata
+ * @param text - The extracted text content from the file
+ * @returns Promise resolving to an UploadedFile object with filename, text, timestamp, and embedding
+ */
+const getUploadedFile = async (file: Express.Multer.File, text: string) => {
+  const uploadedFile: UploadedFile = {
+    filename: file.originalname,
+    text: text,
+    timestamp: Date.now(),
+    embedding: await createEmbedding(text),
+  }
+
+  return uploadedFile
+}
+
+/**
+ * Handles file upload requests, extracts text from supported file types (PDF, DOCX, TXT), generates embeddings, and stores the file data.
+ * @param req - Express request object containing the uploaded file
+ * @param res - Express response object for sending the result
+ */
 export const handleFileUpload = async (req: Request, res: Response) => {
   try {
     const file = req.file
@@ -33,11 +79,7 @@ export const handleFileUpload = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Unsupported file type' })
     }
 
-    const uploadedFile: UploadedFile = {
-      filename: file.originalname,
-      text: text,
-      timestamp: Date.now(),
-    }
+    const uploadedFile = await getUploadedFile(file, text)
 
     // Save uploaded file information to the store
     addFile(uploadedFile)

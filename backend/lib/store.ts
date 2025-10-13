@@ -3,6 +3,7 @@ export type UploadedFile = {
   filename: string
   text: string
   timestamp: number
+  embedding: number[]
 }
 
 type Store = {

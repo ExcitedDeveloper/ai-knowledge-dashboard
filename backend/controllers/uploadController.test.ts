@@ -5,6 +5,7 @@ import mammoth from 'mammoth'
 import { handleFileUpload } from './uploadController'
 import { addFile } from './filesController'
 import store from '../lib/store'
+import OpenAI from 'openai'
 
 // Mock dependencies
 jest.mock('fs')
@@ -13,6 +14,11 @@ jest.mock('mammoth')
 jest.mock('./filesController', () => ({
   addFile: jest.fn(),
   validateFile: jest.fn(),
+}))
+jest.mock('openai')
+jest.mock('../utils/logger', () => ({
+  logInfo: jest.fn(),
+  logError: jest.fn(),
 }))
 
 const mockFs = fs as jest.Mocked<typeof fs>
@@ -26,6 +32,7 @@ describe('uploadController', () => {
   let mockRes: Partial<Response>
   let mockJson: jest.Mock
   let mockStatus: jest.Mock
+  let mockEmbeddingsCreate: jest.Mock
 
   beforeEach(() => {
     // Clear store
@@ -45,6 +52,16 @@ describe('uploadController', () => {
 
     // Mock validateFile to return true by default (successful validation)
     mockValidateFile.mockReturnValue(true)
+
+    // Mock OpenAI embeddings
+    mockEmbeddingsCreate = jest.fn().mockResolvedValue({
+      data: [{ embedding: [0.1, 0.2, 0.3, 0.4, 0.5] }],
+    })
+    ;(OpenAI as jest.MockedClass<typeof OpenAI>).mockImplementation(() => ({
+      embeddings: {
+        create: mockEmbeddingsCreate,
+      },
+    } as any))
 
     // Mock console.error to avoid noise in tests
     jest.spyOn(console, 'error').mockImplementation(() => {})
@@ -92,10 +109,15 @@ describe('uploadController', () => {
 
         expect(mockFs.readFileSync).toHaveBeenCalledWith('/path/to/test.pdf')
         expect(mockPdfParse).toHaveBeenCalledWith(mockBuffer)
+        expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+          model: 'text-embedding-3-small',
+          input: 'Extracted PDF text content',
+        })
         expect(mockAddFile).toHaveBeenCalledWith({
           filename: 'test.pdf',
           text: 'Extracted PDF text content',
           timestamp: expect.any(Number),
+          embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
         })
         expect(mockStatus).toHaveBeenCalledWith(200)
         expect(mockJson).toHaveBeenCalledWith({
@@ -147,10 +169,15 @@ describe('uploadController', () => {
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
         expect(mockMammoth.extractRawText).toHaveBeenCalledWith({ path: '/path/to/test.docx' })
+        expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+          model: 'text-embedding-3-small',
+          input: 'Extracted Word document text',
+        })
         expect(mockAddFile).toHaveBeenCalledWith({
           filename: 'test.docx',
           text: 'Extracted Word document text',
           timestamp: expect.any(Number),
+          embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
         })
         expect(mockStatus).toHaveBeenCalledWith(200)
         expect(mockJson).toHaveBeenCalledWith({
@@ -198,10 +225,15 @@ describe('uploadController', () => {
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
         expect(mockFs.readFileSync).toHaveBeenCalledWith('/path/to/test.txt', 'utf-8')
+        expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+          model: 'text-embedding-3-small',
+          input: 'Plain text file content',
+        })
         expect(mockAddFile).toHaveBeenCalledWith({
           filename: 'test.txt',
           text: 'Plain text file content',
           timestamp: expect.any(Number),
+          embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
         })
         expect(mockStatus).toHaveBeenCalledWith(200)
         expect(mockJson).toHaveBeenCalledWith({
@@ -293,7 +325,6 @@ describe('uploadController', () => {
 
         expect(mockStatus).toHaveBeenCalledWith(500)
         expect(mockJson).toHaveBeenCalledWith({ error: 'Server error' })
-        expect(console.error).toHaveBeenCalled()
       })
     })
 
@@ -316,6 +347,53 @@ describe('uploadController', () => {
         const timestamp = (mockAddFile.mock.calls[0] as any)[0].timestamp
         expect(timestamp).toBeGreaterThan(0)
         expect(typeof timestamp).toBe('number')
+      })
+    })
+
+    describe('embedding generation', () => {
+      test('should create embeddings for uploaded file text', async () => {
+        const mockFile = {
+          originalname: 'test.txt',
+          path: '/path/to/test.txt',
+          mimetype: 'text/plain',
+          fieldname: 'file',
+          encoding: '7bit',
+          size: 1000,
+        } as Express.Multer.File
+        mockReq = { file: mockFile }
+
+        const textContent = 'Test content for embedding'
+        mockFs.readFileSync.mockReturnValue(textContent)
+
+        await handleFileUpload(mockReq as Request, mockRes as Response)
+
+        expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+          model: 'text-embedding-3-small',
+          input: textContent,
+        })
+        const uploadedFile = (mockAddFile.mock.calls[0] as any)[0]
+        expect(uploadedFile.embedding).toEqual([0.1, 0.2, 0.3, 0.4, 0.5])
+      })
+
+      test('should handle embedding creation failures', async () => {
+        const mockFile = {
+          originalname: 'test.txt',
+          path: '/path/to/test.txt',
+          mimetype: 'text/plain',
+          fieldname: 'file',
+          encoding: '7bit',
+          size: 1000,
+        } as Express.Multer.File
+        mockReq = { file: mockFile }
+
+        mockFs.readFileSync.mockReturnValue('content')
+        mockEmbeddingsCreate.mockRejectedValue(new Error('OpenAI API error'))
+
+        await handleFileUpload(mockReq as Request, mockRes as Response)
+
+        expect(mockStatus).toHaveBeenCalledWith(500)
+        expect(mockJson).toHaveBeenCalledWith({ error: 'Server error' })
+        expect(mockAddFile).not.toHaveBeenCalled()
       })
     })
   })

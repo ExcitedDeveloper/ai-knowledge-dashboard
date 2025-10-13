@@ -24,6 +24,7 @@ describe('filesController', () => {
         filename: 'test.pdf',
         text: 'Test content',
         timestamp: Date.now(),
+        embedding: [0.1, 0.2, 0.3],
       }
 
       addFile(mockFile)
@@ -37,12 +38,14 @@ describe('filesController', () => {
         filename: 'test1.pdf',
         text: 'Test content 1',
         timestamp: Date.now(),
+        embedding: [0.1, 0.2, 0.3],
       }
 
       const mockFile2: UploadedFile = {
         filename: 'test2.pdf',
         text: 'Test content 2',
         timestamp: Date.now() + 1000,
+        embedding: [0.4, 0.5, 0.6],
       }
 
       addFile(mockFile1)
@@ -68,11 +71,13 @@ describe('filesController', () => {
           filename: 'test1.pdf',
           text: 'Test content 1',
           timestamp: Date.now(),
+          embedding: [0.1, 0.2, 0.3],
         },
         {
           filename: 'test2.pdf',
           text: 'Test content 2',
           timestamp: Date.now() + 1000,
+          embedding: [0.4, 0.5, 0.6],
         },
       ]
 
@@ -90,6 +95,7 @@ describe('filesController', () => {
         filename: 'test.pdf',
         text: 'Test content',
         timestamp: Date.now(),
+        embedding: [0.1, 0.2, 0.3],
       }
 
       addFile(mockFile)

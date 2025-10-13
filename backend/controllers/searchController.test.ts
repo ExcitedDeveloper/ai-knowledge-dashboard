@@ -32,6 +32,7 @@ describe('searchController', () => {
         filename: 'test.pdf',
         text: 'This is some content',
         timestamp: Date.now(),
+        embedding: [0.1, 0.2, 0.3],
       }
 
       store.files = [mockFile]
@@ -54,6 +55,7 @@ describe('searchController', () => {
         filename: 'test.pdf',
         text: 'This is some important content about testing',
         timestamp: Date.now(),
+        embedding: [0.1, 0.2, 0.3],
       }
 
       store.files = [mockFile]
@@ -81,6 +83,7 @@ describe('searchController', () => {
         filename: 'test.pdf',
         text: 'Some content',
         timestamp: Date.now(),
+        embedding: [0.1, 0.2, 0.3],
       }
 
       store.files = [mockFile]
@@ -103,16 +106,19 @@ describe('searchController', () => {
           filename: 'file1.pdf',
           text: 'JavaScript is great for web development',
           timestamp: Date.now(),
+          embedding: [0.1, 0.2, 0.3],
         },
         {
           filename: 'file2.pdf',
           text: 'Python is also great for backend development',
           timestamp: Date.now() + 1000,
+          embedding: [0.4, 0.5, 0.6],
         },
         {
           filename: 'file3.pdf',
           text: 'Java is used for enterprise applications',
           timestamp: Date.now() + 2000,
+          embedding: [0.7, 0.8, 0.9],
         },
       ]
 
@@ -137,6 +143,7 @@ describe('searchController', () => {
         filename: 'test.pdf',
         text: 'JavaScript and JAVASCRIPT and javascript',
         timestamp: Date.now(),
+        embedding: [0.1, 0.2, 0.3],
       }
 
       store.files = [mockFile]
@@ -162,6 +169,7 @@ describe('searchController', () => {
         filename: 'long.pdf',
         text: longText,
         timestamp: Date.now(),
+        embedding: [0.1, 0.2, 0.3],
       }
 
       store.files = [mockFile]
@@ -184,11 +192,13 @@ describe('searchController', () => {
           filename: 'file1.pdf',
           text: 'JavaScript is great',
           timestamp: Date.now(),
+          embedding: [0.1, 0.2, 0.3],
         },
         {
           filename: 'file2.pdf',
           text: 'Python is awesome',
           timestamp: Date.now() + 1000,
+          embedding: [0.4, 0.5, 0.6],
         },
       ]
 
@@ -211,6 +221,7 @@ describe('searchController', () => {
         filename: 'test.pdf',
         text: 'This has a match',
         timestamp: Date.now(),
+        embedding: [0.1, 0.2, 0.3],
       }
 
       store.files = [mockFile]

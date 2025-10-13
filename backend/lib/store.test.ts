@@ -16,6 +16,7 @@ describe('store', () => {
       filename: 'test.pdf',
       text: 'Test content',
       timestamp: Date.now(),
+      embedding: [0.1, 0.2, 0.3],
     }
 
     store.files.push(mockFile)
@@ -31,6 +32,7 @@ describe('store', () => {
       filename: 'test.pdf',
       text: 'Test content',
       timestamp: Date.now(),
+      embedding: [0.1, 0.2, 0.3],
     })
 
     // Should be the same reference
@@ -43,11 +45,13 @@ describe('store', () => {
         filename: 'file1.pdf',
         text: 'Content 1',
         timestamp: 1000,
+        embedding: [0.1, 0.2, 0.3],
       },
       {
         filename: 'file2.pdf',
         text: 'Content 2',
         timestamp: 2000,
+        embedding: [0.4, 0.5, 0.6],
       },
     ]
 

@@ -27,11 +27,13 @@ describe('GET /files', () => {
         filename: 'test1.pdf',
         text: 'Test content 1',
         timestamp: 1640995200000,
+        embedding: [0.1, 0.2, 0.3],
       },
       {
         filename: 'test2.pdf',
         text: 'Test content 2',
         timestamp: 1640995300000,
+        embedding: [0.4, 0.5, 0.6],
       },
     ]
 
@@ -57,6 +59,7 @@ describe('GET /files', () => {
       filename: 'single.pdf',
       text: 'Single file content',
       timestamp: 1640995200000,
+      embedding: [0.1, 0.2, 0.3],
     }
 
     addFile(mockFile)
