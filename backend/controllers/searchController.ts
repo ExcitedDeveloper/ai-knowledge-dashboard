@@ -116,11 +116,13 @@ export const handleSearch = async (
   req: Request<{}, {}, {}, SearchQuery>,
   res: Response
 ): Promise<void> => {
+  // Validate that a non-empty search query was provided
   if (!req.query.q || req.query.q.trim() === '') {
     res.status(400).json({ error: 'Missing or empty search query.' })
     return
   }
 
+  // Return empty results if no files have been uploaded yet
   if (store.files.length <= 0) {
     res.json([])
     return
@@ -130,6 +132,8 @@ export const handleSearch = async (
     const query = req.query.q
     logInfo(`Search query: "${query}"`)
 
+    // Search through all uploaded files for matches
+    // Build an array of search results with excerpts and match counts
     const files = store.files.reduce((acc: SearchResult[], file) => {
       if (file.text.includes(query)) {
         acc.push({
@@ -141,16 +145,19 @@ export const handleSearch = async (
       return acc
     }, [])
 
+    // Construct the response object with results array
     const response: { results: SearchResult[]; message?: string } = {
       results: files,
     }
 
+    // Add a user-friendly message when no matches are found
     if (files.length === 0) {
       response.message = 'No matches found for query.'
     }
 
     res.json(response)
   } catch (error) {
+    // Log and return a 500 error if anything unexpected happens
     logError('Search failed: Unexpected error', error)
     res
       .status(500)
