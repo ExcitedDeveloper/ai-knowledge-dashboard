@@ -1,13 +1,4 @@
-import { Request, Response } from 'express'
-import fs from 'fs'
-import pdfParse from 'pdf-parse'
-import mammoth from 'mammoth'
-import { handleFileUpload } from './uploadController'
-import { addFile } from './filesController'
-import store from '../lib/store'
-import OpenAI from 'openai'
-
-// Mock dependencies
+// Mock dependencies BEFORE imports
 jest.mock('fs')
 jest.mock('pdf-parse')
 jest.mock('mammoth')
@@ -15,11 +6,22 @@ jest.mock('./filesController', () => ({
   addFile: jest.fn(),
   validateFile: jest.fn(),
 }))
-jest.mock('openai')
+jest.mock('cohere-ai', () => ({
+  CohereClient: jest.fn(),
+}))
 jest.mock('../utils/logger', () => ({
   logInfo: jest.fn(),
   logError: jest.fn(),
 }))
+
+import { Request, Response } from 'express'
+import fs from 'fs'
+import pdfParse from 'pdf-parse'
+import mammoth from 'mammoth'
+import { handleFileUpload } from './uploadController'
+import { addFile } from './filesController'
+import store from '../lib/store'
+import { CohereClient } from 'cohere-ai'
 
 const mockFs = fs as jest.Mocked<typeof fs>
 const mockPdfParse = pdfParse as jest.MockedFunction<typeof pdfParse>
@@ -32,7 +34,7 @@ describe('uploadController', () => {
   let mockRes: Partial<Response>
   let mockJson: jest.Mock
   let mockStatus: jest.Mock
-  let mockEmbeddingsCreate: jest.Mock
+  let mockEmbed: jest.Mock
 
   beforeEach(() => {
     // Clear store
@@ -53,14 +55,12 @@ describe('uploadController', () => {
     // Mock validateFile to return true by default (successful validation)
     mockValidateFile.mockReturnValue(true)
 
-    // Mock OpenAI embeddings
-    mockEmbeddingsCreate = jest.fn().mockResolvedValue({
-      data: [{ embedding: [0.1, 0.2, 0.3, 0.4, 0.5] }],
+    // Mock Cohere embeddings
+    mockEmbed = jest.fn().mockResolvedValue({
+      embeddings: [[0.1, 0.2, 0.3, 0.4, 0.5]],
     })
-    ;(OpenAI as jest.MockedClass<typeof OpenAI>).mockImplementation(() => ({
-      embeddings: {
-        create: mockEmbeddingsCreate,
-      },
+    ;(CohereClient as jest.MockedClass<typeof CohereClient>).mockImplementation(() => ({
+      embed: mockEmbed,
     } as any))
 
     // Mock console.error to avoid noise in tests
@@ -109,9 +109,10 @@ describe('uploadController', () => {
 
         expect(mockFs.readFileSync).toHaveBeenCalledWith('/path/to/test.pdf')
         expect(mockPdfParse).toHaveBeenCalledWith(mockBuffer)
-        expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-          model: 'text-embedding-3-small',
-          input: 'Extracted PDF text content',
+        expect(mockEmbed).toHaveBeenCalledWith({
+          model: 'embed-english-v3.0',
+          texts: ['Extracted PDF text content'],
+          inputType: 'search_document',
         })
         expect(mockAddFile).toHaveBeenCalledWith({
           filename: 'test.pdf',
@@ -123,6 +124,7 @@ describe('uploadController', () => {
         expect(mockJson).toHaveBeenCalledWith({
           filename: 'test.pdf',
           text: 'Extracted PDF text content',
+          embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
         })
       })
 
@@ -169,9 +171,10 @@ describe('uploadController', () => {
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
         expect(mockMammoth.extractRawText).toHaveBeenCalledWith({ path: '/path/to/test.docx' })
-        expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-          model: 'text-embedding-3-small',
-          input: 'Extracted Word document text',
+        expect(mockEmbed).toHaveBeenCalledWith({
+          model: 'embed-english-v3.0',
+          texts: ['Extracted Word document text'],
+          inputType: 'search_document',
         })
         expect(mockAddFile).toHaveBeenCalledWith({
           filename: 'test.docx',
@@ -183,6 +186,7 @@ describe('uploadController', () => {
         expect(mockJson).toHaveBeenCalledWith({
           filename: 'test.docx',
           text: 'Extracted Word document text',
+          embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
         })
       })
 
@@ -225,9 +229,10 @@ describe('uploadController', () => {
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
         expect(mockFs.readFileSync).toHaveBeenCalledWith('/path/to/test.txt', 'utf-8')
-        expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-          model: 'text-embedding-3-small',
-          input: 'Plain text file content',
+        expect(mockEmbed).toHaveBeenCalledWith({
+          model: 'embed-english-v3.0',
+          texts: ['Plain text file content'],
+          inputType: 'search_document',
         })
         expect(mockAddFile).toHaveBeenCalledWith({
           filename: 'test.txt',
@@ -239,6 +244,7 @@ describe('uploadController', () => {
         expect(mockJson).toHaveBeenCalledWith({
           filename: 'test.txt',
           text: 'Plain text file content',
+          embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
         })
       })
 
@@ -367,9 +373,10 @@ describe('uploadController', () => {
 
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
-        expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-          model: 'text-embedding-3-small',
-          input: textContent,
+        expect(mockEmbed).toHaveBeenCalledWith({
+          model: 'embed-english-v3.0',
+          texts: [textContent],
+          inputType: 'search_document',
         })
         const uploadedFile = (mockAddFile.mock.calls[0] as any)[0]
         expect(uploadedFile.embedding).toEqual([0.1, 0.2, 0.3, 0.4, 0.5])
@@ -387,7 +394,7 @@ describe('uploadController', () => {
         mockReq = { file: mockFile }
 
         mockFs.readFileSync.mockReturnValue('content')
-        mockEmbeddingsCreate.mockRejectedValue(new Error('OpenAI API error'))
+        mockEmbed.mockRejectedValue(new Error('Cohere API error'))
 
         await handleFileUpload(mockReq as Request, mockRes as Response)
 

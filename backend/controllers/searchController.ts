@@ -1,12 +1,30 @@
+/**
+ * Search Controller
+ *
+ * Handles text-based search functionality for uploaded files.
+ * Provides utilities for query matching, excerpt creation, and highlighting.
+ */
+
 import store, { UploadedFile } from '../lib/store'
 import { Request, Response } from 'express'
 import { SearchQuery } from '../types/search'
 import { logInfo, logError } from '../utils/logger'
 
+/**
+ * Escapes special regular expression characters in a string
+ * @param text - The text to escape
+ * @returns The escaped text safe for use in regex patterns
+ */
 export const escapeRegex = (text: string): string => {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/**
+ * Highlights all occurrences of the search query in an excerpt
+ * @param excerpt - The text excerpt to highlight
+ * @param query - The search query to highlight
+ * @returns The excerpt with matched terms wrapped in <mark> tags
+ */
 export const highlight = (excerpt: string, query: string): string => {
   // Case-insensitive regex for the query
   const regex = new RegExp('(' + escapeRegex(query) + ')', 'gi')
@@ -17,6 +35,12 @@ export const highlight = (excerpt: string, query: string): string => {
   return highlighted
 }
 
+/**
+ * Creates a contextual excerpt from a document containing the search query
+ * @param documentText - The full document text
+ * @param query - The search query to find
+ * @returns An excerpt centered around the first match, with highlighting, or the first 200 chars if no match
+ */
 export const createExcerpt = (documentText: string, query: string): string => {
   // 1. Normalize text and query for case-insensitive search
   const lowerText = documentText.toLowerCase()
@@ -58,18 +82,36 @@ export const createExcerpt = (documentText: string, query: string): string => {
   return excerpt
 }
 
+/**
+ * Counts the number of times a query appears in the text (case-insensitive)
+ * @param text - The text to search in
+ * @param query - The search query to count
+ * @returns The number of matches found
+ */
 export const countMatches = (text: string, query: string): number => {
   const regex = new RegExp(escapeRegex(query), 'gi')
   const matches = text.match(regex)
   return matches ? matches.length : 0
 }
 
+/**
+ * Represents a single search result
+ */
 export type SearchResult = {
+  /** The name of the file containing matches */
   filename: string
+  /** A contextual excerpt with highlighted matches */
   excerpt: string
+  /** The number of times the query appears in the file */
   matches: number
 }
 
+/**
+ * Handles search requests for uploaded files
+ * Searches through all stored files for matches and returns results with excerpts
+ * @param req - Express request with search query in query params
+ * @param res - Express response containing search results or error
+ */
 export const handleSearch = async (
   req: Request<{}, {}, {}, SearchQuery>,
   res: Response

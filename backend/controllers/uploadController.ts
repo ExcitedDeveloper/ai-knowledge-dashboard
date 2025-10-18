@@ -5,25 +5,29 @@ import mammoth from 'mammoth'
 import { UploadedFile } from '../lib/store'
 import { addFile, validateFile } from './filesController'
 import { logInfo, logError } from '../utils/logger'
-import OpenAI from 'openai'
+import { CohereClient } from 'cohere-ai'
 
 /**
- * Creates an embedding vector for the given text using OpenAI's embedding model.
+ * Creates an embedding vector for the given text using Cohere's embedding model.
  * @param text - The text to generate an embedding for
  * @returns Promise resolving to an array of numbers representing the embedding vector
  */
 const createEmbedding = async (text: string): Promise<number[]> => {
   try {
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY!,
+    console.log(`COHERE_API_KEY: ${process.env.COHERE_API_KEY}`)
+    const cohere = new CohereClient({
+      token: process.env.COHERE_API_KEY!,
     })
 
-    const res = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: text,
+    const res = await cohere.embed({
+      model: 'embed-english-v3.0',
+      texts: [text],
+      inputType: 'search_document',
     })
 
-    return res.data[0].embedding
+    // Cohere returns embeddings as number[][]
+    const embeddings = res.embeddings as number[][]
+    return embeddings[0]
   } catch (err) {
     logError('Failed to create embedding', err)
     throw err
@@ -90,6 +94,7 @@ export const handleFileUpload = async (req: Request, res: Response) => {
     res.status(200).json({
       filename: file.originalname,
       text: text,
+      embedding: uploadedFile.embedding,
     })
   } catch (err) {
     logError('Upload failed: Server error', err)
