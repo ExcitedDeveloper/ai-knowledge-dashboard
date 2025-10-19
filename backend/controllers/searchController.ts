@@ -9,6 +9,8 @@ import store, { UploadedFile } from '../lib/store'
 import { Request, Response } from 'express'
 import { SearchQuery } from '../types/search'
 import { logInfo, logError } from '../utils/logger'
+import { createEmbedding } from '../services/embeddingService'
+import { cosineSimilarity } from '../utils/math'
 
 /**
  * Escapes special regular expression characters in a string
@@ -132,30 +134,53 @@ export const handleSearch = async (
     const query = req.query.q
     logInfo(`Search query: "${query}"`)
 
-    // Search through all uploaded files for matches
-    // Build an array of search results with excerpts and match counts
-    const files = store.files.reduce((acc: SearchResult[], file) => {
-      if (file.text.includes(query)) {
-        acc.push({
-          filename: file.filename,
-          excerpt: createExcerpt(file.text, query),
-          matches: countMatches(file.text, query),
-        })
+    // Generate embedding for the query using Cohere
+    let queryEmbedding: number[]
+    try {
+      queryEmbedding = await createEmbedding(query)
+
+      // Validate embedding format
+      if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
+        throw new Error('Invalid embedding format received from service')
       }
-      return acc
-    }, [])
-
-    // Construct the response object with results array
-    const response: { results: SearchResult[]; message?: string } = {
-      results: files,
+    } catch (embeddingError) {
+      logError('Failed to generate query embedding', embeddingError)
+      res.status(500).json({
+        error: 'Failed to process search query. Please try again.'
+      })
+      return
     }
 
-    // Add a user-friendly message when no matches are found
-    if (files.length === 0) {
-      response.message = 'No matches found for query.'
-    }
+    // Compare query embedding with all stored file embeddings
+    const results = store.files.map((file) => {
+      // Guard against missing embeddings
+      if (!file.embedding) {
+        logError(`File "${file.filename}" has no embedding - skipping`)
+        return { filename: file.filename, similarity: 0, excerpt: '' }
+      }
 
-    res.json(response)
+      // Validate embedding dimensions match
+      if (file.embedding.length !== queryEmbedding.length) {
+        logError(
+          `Embedding dimension mismatch for file "${file.filename}": ` +
+          `expected ${queryEmbedding.length}, got ${file.embedding.length}`
+        )
+        return { filename: file.filename, similarity: 0, excerpt: '' }
+      }
+
+      const similarity = cosineSimilarity(queryEmbedding, file.embedding)
+
+      return {
+        filename: file.filename,
+        similarity,
+        excerpt: createExcerpt(file.text, query),
+      }
+    })
+
+    // Sort results by similarity score (descending - highest similarity first)
+    const similarities = results.sort((a, b) => b.similarity - a.similarity)
+
+    res.json(similarities)
   } catch (error) {
     // Log and return a 500 error if anything unexpected happens
     logError('Search failed: Unexpected error', error)

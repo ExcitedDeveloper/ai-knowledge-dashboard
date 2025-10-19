@@ -9,6 +9,11 @@ import {
 } from './searchController'
 import store, { UploadedFile } from '../lib/store'
 import { SearchQuery } from '../types/search'
+import { createEmbedding } from '../services/embeddingService'
+
+// Mock the embedding service
+jest.mock('../services/embeddingService')
+const mockCreateEmbedding = createEmbedding as jest.MockedFunction<typeof createEmbedding>
 
 // Mock response object
 const mockResponse = () => {
@@ -27,30 +32,92 @@ describe('searchController', () => {
   })
 
   describe('handleSearch', () => {
-    test('should return empty array when no files match query', async () => {
-      const mockFile: UploadedFile = {
-        filename: 'test.pdf',
-        text: 'This is some content',
-        timestamp: Date.now(),
-        embedding: [0.1, 0.2, 0.3],
-      }
+    beforeEach(() => {
+      mockCreateEmbedding.mockClear()
+    })
 
-      store.files = [mockFile]
+    test('should return empty array when no files in store', async () => {
+      store.files = []
 
       const req = {
-        query: { q: 'nonexistent' },
+        query: { q: 'test query' },
       } as Request<{}, {}, {}, SearchQuery>
       const res = mockResponse()
 
       await handleSearch(req, res)
 
-      expect(res.json).toHaveBeenCalledWith({
-        results: [],
-        message: 'No matches found for query.',
-      })
+      expect(res.json).toHaveBeenCalledWith([])
+      expect(mockCreateEmbedding).not.toHaveBeenCalled()
     })
 
-    test('should return matching files with excerpts', async () => {
+    test('should return results sorted by similarity (descending)', async () => {
+      const mockFiles: UploadedFile[] = [
+        {
+          filename: 'low-match.pdf',
+          text: 'JavaScript is great for web development',
+          timestamp: Date.now(),
+          embedding: [0.1, 0.2, 0.3],
+        },
+        {
+          filename: 'high-match.pdf',
+          text: 'Python is also great for backend development',
+          timestamp: Date.now() + 1000,
+          embedding: [0.9, 0.8, 0.7],
+        },
+        {
+          filename: 'mid-match.pdf',
+          text: 'Java is used for enterprise applications',
+          timestamp: Date.now() + 2000,
+          embedding: [0.5, 0.5, 0.5],
+        },
+      ]
+
+      store.files = mockFiles
+      mockCreateEmbedding.mockResolvedValue([1.0, 0.9, 0.8])
+
+      const req = {
+        query: { q: 'programming' },
+      } as Request<{}, {}, {}, SearchQuery>
+      const res = mockResponse()
+
+      await handleSearch(req, res)
+
+      const result = (res.json as jest.Mock).mock.calls[0][0]
+      expect(result).toHaveLength(3)
+      expect(result[0].similarity).toBeGreaterThanOrEqual(result[1].similarity)
+      expect(result[1].similarity).toBeGreaterThanOrEqual(result[2].similarity)
+      expect(result[0]).toHaveProperty('filename')
+      expect(result[0]).toHaveProperty('similarity')
+      expect(result[0]).toHaveProperty('excerpt')
+    })
+
+    test('should handle empty query', async () => {
+      const req = {
+        query: {},
+      } as Request<{}, {}, {}, SearchQuery>
+      const res = mockResponse()
+
+      await handleSearch(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(res.json).toHaveBeenCalledWith({ error: 'Missing or empty search query.' })
+      expect(mockCreateEmbedding).not.toHaveBeenCalled()
+    })
+
+    test('should handle whitespace-only query', async () => {
+      const req = {
+        query: { q: '   ' },
+      } as Request<{}, {}, {}, SearchQuery>
+      const res = mockResponse()
+
+      await handleSearch(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(res.json).toHaveBeenCalledWith({ error: 'Missing or empty search query.' })
+      expect(mockCreateEmbedding).not.toHaveBeenCalled()
+    })
+
+    test('should create excerpts with highlighted query terms', async () => {
       const mockFile: UploadedFile = {
         filename: 'test.pdf',
         text: 'This is some important content about testing',
@@ -59,6 +126,7 @@ describe('searchController', () => {
       }
 
       store.files = [mockFile]
+      mockCreateEmbedding.mockResolvedValue([0.1, 0.2, 0.3])
 
       const req = {
         query: { q: 'important' },
@@ -67,18 +135,64 @@ describe('searchController', () => {
 
       await handleSearch(req, res)
 
-      const expectedResult = {
-        results: [{
-          filename: 'test.pdf',
-          excerpt: expect.stringContaining('<mark>important</mark>'),
-          matches: 1,
-        }],
-      }
-
-      expect(res.json).toHaveBeenCalledWith(expectedResult)
+      const result = (res.json as jest.Mock).mock.calls[0][0]
+      expect(result[0].excerpt).toContain('<mark>important</mark>')
     })
 
-    test('should handle empty query', async () => {
+    test('should handle files without embeddings', async () => {
+      const mockFiles: UploadedFile[] = [
+        {
+          filename: 'with-embedding.pdf',
+          text: 'Has embedding',
+          timestamp: Date.now(),
+          embedding: [0.1, 0.2, 0.3],
+        },
+        {
+          filename: 'no-embedding.pdf',
+          text: 'No embedding',
+          timestamp: Date.now(),
+          embedding: undefined,
+        },
+      ]
+
+      store.files = mockFiles
+      mockCreateEmbedding.mockResolvedValue([0.1, 0.2, 0.3])
+
+      const req = {
+        query: { q: 'test' },
+      } as Request<{}, {}, {}, SearchQuery>
+      const res = mockResponse()
+
+      await handleSearch(req, res)
+
+      const result = (res.json as jest.Mock).mock.calls[0][0]
+      expect(result).toHaveLength(2)
+      expect(result.find((r: { filename: string }) => r.filename === 'no-embedding.pdf').similarity).toBe(0)
+    })
+
+    test('should handle embedding dimension mismatch', async () => {
+      const mockFile: UploadedFile = {
+        filename: 'wrong-dimensions.pdf',
+        text: 'Test content',
+        timestamp: Date.now(),
+        embedding: [0.1, 0.2], // 2 dimensions
+      }
+
+      store.files = [mockFile]
+      mockCreateEmbedding.mockResolvedValue([0.1, 0.2, 0.3]) // 3 dimensions
+
+      const req = {
+        query: { q: 'test' },
+      } as Request<{}, {}, {}, SearchQuery>
+      const res = mockResponse()
+
+      await handleSearch(req, res)
+
+      const result = (res.json as jest.Mock).mock.calls[0][0]
+      expect(result[0].similarity).toBe(0)
+    })
+
+    test('should handle embedding service failure', async () => {
       const mockFile: UploadedFile = {
         filename: 'test.pdf',
         text: 'Some content',
@@ -87,80 +201,46 @@ describe('searchController', () => {
       }
 
       store.files = [mockFile]
+      mockCreateEmbedding.mockRejectedValue(new Error('API error'))
 
       const req = {
-        query: {},
+        query: { q: 'test' },
       } as Request<{}, {}, {}, SearchQuery>
       const res = mockResponse()
 
       await handleSearch(req, res)
 
-      // Empty query should return error
-      expect(res.status).toHaveBeenCalledWith(400)
-      expect(res.json).toHaveBeenCalledWith({ error: 'Missing or empty search query.' })
+      expect(res.status).toHaveBeenCalledWith(500)
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Failed to process search query. Please try again.'
+      })
     })
 
-    test('should handle multiple files with matches', async () => {
-      const mockFiles: UploadedFile[] = [
-        {
-          filename: 'file1.pdf',
-          text: 'JavaScript is great for web development',
-          timestamp: Date.now(),
-          embedding: [0.1, 0.2, 0.3],
-        },
-        {
-          filename: 'file2.pdf',
-          text: 'Python is also great for backend development',
-          timestamp: Date.now() + 1000,
-          embedding: [0.4, 0.5, 0.6],
-        },
-        {
-          filename: 'file3.pdf',
-          text: 'Java is used for enterprise applications',
-          timestamp: Date.now() + 2000,
-          embedding: [0.7, 0.8, 0.9],
-        },
-      ]
-
-      store.files = mockFiles
-
-      const req = {
-        query: { q: 'great' },
-      } as Request<{}, {}, {}, SearchQuery>
-      const res = mockResponse()
-
-      await handleSearch(req, res)
-
-      const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result.results).toHaveLength(2)
-      expect(result.results[0].filename).toBe('file1.pdf')
-      expect(result.results[1].filename).toBe('file2.pdf')
-      expect(result.message).toBeUndefined()
-    })
-
-    test('should handle case-insensitive search', async () => {
+    test('should handle invalid embedding format from service', async () => {
       const mockFile: UploadedFile = {
         filename: 'test.pdf',
-        text: 'JavaScript and JAVASCRIPT and javascript',
+        text: 'Some content',
         timestamp: Date.now(),
         embedding: [0.1, 0.2, 0.3],
       }
 
       store.files = [mockFile]
+      mockCreateEmbedding.mockResolvedValue([] as number[])
 
       const req = {
-        query: { q: 'javascript' },
+        query: { q: 'test' },
       } as Request<{}, {}, {}, SearchQuery>
       const res = mockResponse()
 
       await handleSearch(req, res)
 
-      const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result.results).toHaveLength(1)
-      expect(result.results[0].matches).toBe(3)
+      expect(res.status).toHaveBeenCalledWith(500)
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Failed to process search query. Please try again.'
+      })
     })
 
-    test('should create proper excerpts with context', async () => {
+    test('should create excerpts with ellipsis for long documents', async () => {
       const longText = 'This is a very long document with lots of content. ' +
                        'Somewhere in the middle we have the important keyword that we are searching for. ' +
                        'And then there is more content after the keyword.'
@@ -173,6 +253,7 @@ describe('searchController', () => {
       }
 
       store.files = [mockFile]
+      mockCreateEmbedding.mockResolvedValue([0.1, 0.2, 0.3])
 
       const req = {
         query: { q: 'keyword' },
@@ -182,60 +263,8 @@ describe('searchController', () => {
       await handleSearch(req, res)
 
       const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result.results[0].excerpt).toContain('...')
-      expect(result.results[0].excerpt).toContain('<mark>keyword</mark>')
-    })
-
-    test('should include message when no matches found', async () => {
-      const mockFiles: UploadedFile[] = [
-        {
-          filename: 'file1.pdf',
-          text: 'JavaScript is great',
-          timestamp: Date.now(),
-          embedding: [0.1, 0.2, 0.3],
-        },
-        {
-          filename: 'file2.pdf',
-          text: 'Python is awesome',
-          timestamp: Date.now() + 1000,
-          embedding: [0.4, 0.5, 0.6],
-        },
-      ]
-
-      store.files = mockFiles
-
-      const req = {
-        query: { q: 'nonexistent' },
-      } as Request<{}, {}, {}, SearchQuery>
-      const res = mockResponse()
-
-      await handleSearch(req, res)
-
-      const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result.results).toHaveLength(0)
-      expect(result.message).toBe('No matches found for query.')
-    })
-
-    test('should not include message when matches are found', async () => {
-      const mockFile: UploadedFile = {
-        filename: 'test.pdf',
-        text: 'This has a match',
-        timestamp: Date.now(),
-        embedding: [0.1, 0.2, 0.3],
-      }
-
-      store.files = [mockFile]
-
-      const req = {
-        query: { q: 'match' },
-      } as Request<{}, {}, {}, SearchQuery>
-      const res = mockResponse()
-
-      await handleSearch(req, res)
-
-      const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result.results).toHaveLength(1)
-      expect(result.message).toBeUndefined()
+      expect(result[0].excerpt).toContain('...')
+      expect(result[0].excerpt).toContain('<mark>keyword</mark>')
     })
   })
 

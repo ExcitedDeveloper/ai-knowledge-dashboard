@@ -5,34 +5,7 @@ import mammoth from 'mammoth'
 import { UploadedFile } from '../lib/store'
 import { addFile, validateFile } from './filesController'
 import { logInfo, logError } from '../utils/logger'
-import { CohereClient } from 'cohere-ai'
-
-/**
- * Creates an embedding vector for the given text using Cohere's embedding model.
- * @param text - The text to generate an embedding for
- * @returns Promise resolving to an array of numbers representing the embedding vector
- */
-const createEmbedding = async (text: string): Promise<number[]> => {
-  try {
-    console.log(`COHERE_API_KEY: ${process.env.COHERE_API_KEY}`)
-    const cohere = new CohereClient({
-      token: process.env.COHERE_API_KEY!,
-    })
-
-    const res = await cohere.embed({
-      model: 'embed-english-v3.0',
-      texts: [text],
-      inputType: 'search_document',
-    })
-
-    // Cohere returns embeddings as number[][]
-    const embeddings = res.embeddings as number[][]
-    return embeddings[0]
-  } catch (err) {
-    logError('Failed to create embedding', err)
-    throw err
-  }
-}
+import { createEmbedding } from '../services/embeddingService'
 
 /**
  * Constructs an UploadedFile object with metadata and embedding from the uploaded file.
