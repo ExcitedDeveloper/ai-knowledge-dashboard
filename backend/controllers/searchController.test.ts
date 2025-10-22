@@ -166,8 +166,9 @@ describe('searchController', () => {
       await handleSearch(req, res)
 
       const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result).toHaveLength(2)
-      expect(result.find((r: { filename: string }) => r.filename === 'no-embedding.pdf').similarity).toBe(0)
+      // File without embedding has similarity 0, filtered out by threshold
+      expect(result).toHaveLength(1)
+      expect(result.find((r: { filename: string }) => r.filename === 'no-embedding.pdf')).toBeUndefined()
     })
 
     test('should handle embedding dimension mismatch', async () => {
@@ -189,7 +190,8 @@ describe('searchController', () => {
       await handleSearch(req, res)
 
       const result = (res.json as jest.Mock).mock.calls[0][0]
-      expect(result[0].similarity).toBe(0)
+      // File with dimension mismatch has similarity 0, filtered out by threshold
+      expect(result).toHaveLength(0)
     })
 
     test('should handle embedding service failure', async () => {
@@ -265,6 +267,50 @@ describe('searchController', () => {
       const result = (res.json as jest.Mock).mock.calls[0][0]
       expect(result[0].excerpt).toContain('...')
       expect(result[0].excerpt).toContain('<mark>keyword</mark>')
+    })
+
+    test('should filter out results below 0.25 similarity threshold', async () => {
+      const mockFiles: UploadedFile[] = [
+        {
+          filename: 'high-similarity.pdf',
+          text: 'Highly relevant content',
+          timestamp: Date.now(),
+          embedding: [1.0, 0.9, 0.8], // Will have high similarity
+        },
+        {
+          filename: 'medium-similarity.pdf',
+          text: 'Somewhat relevant content',
+          timestamp: Date.now() + 1000,
+          embedding: [0.3, 0.3, 0.3], // Will have medium similarity
+        },
+        {
+          filename: 'low-similarity.pdf',
+          text: 'Not very relevant',
+          timestamp: Date.now() + 2000,
+          embedding: [-0.5, -0.5, -0.5], // Will have low similarity (negative, opposite direction)
+        },
+      ]
+
+      store.files = mockFiles
+      mockCreateEmbedding.mockResolvedValue([1.0, 0.9, 0.8])
+
+      const req = {
+        query: { q: 'test query' },
+      } as Request<{}, {}, {}, SearchQuery>
+      const res = mockResponse()
+
+      await handleSearch(req, res)
+
+      const result = (res.json as jest.Mock).mock.calls[0][0]
+
+      // Verify all returned results have similarity >= 0.25
+      result.forEach((item: { similarity: number }) => {
+        expect(item.similarity).toBeGreaterThanOrEqual(0.25)
+      })
+
+      // Verify low-similarity file is not in results
+      const lowSimilarityFile = result.find((r: { filename: string }) => r.filename === 'low-similarity.pdf')
+      expect(lowSimilarityFile).toBeUndefined()
     })
   })
 

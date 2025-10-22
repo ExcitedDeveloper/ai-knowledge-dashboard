@@ -178,7 +178,10 @@ export const handleSearch = async (
     })
 
     // Sort results by similarity score (descending - highest similarity first)
-    const similarities = results.sort((a, b) => b.similarity - a.similarity)
+    // Filter out results below the 0.25 similarity threshold
+    const similarities = results
+      .sort((a, b) => b.similarity - a.similarity)
+      .filter(result => result.similarity >= 0.25)
 
     res.json(similarities)
   } catch (error) {
