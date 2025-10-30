@@ -126,7 +126,7 @@ export const handleSearch = async (
 
   // Return empty results if no files have been uploaded yet
   if (store.files.length <= 0) {
-    res.json([])
+    res.json({ results: [], message: 'No documents available to search' })
     return
   }
 
@@ -156,7 +156,7 @@ export const handleSearch = async (
       // Guard against missing embeddings
       if (!file.embedding) {
         logError(`File "${file.filename}" has no embedding - skipping`)
-        return { filename: file.filename, similarity: 0, excerpt: '' }
+        return { filename: file.filename, similarity: 0, excerpt: '', matches: 0 }
       }
 
       // Validate embedding dimensions match
@@ -165,25 +165,36 @@ export const handleSearch = async (
           `Embedding dimension mismatch for file "${file.filename}": ` +
           `expected ${queryEmbedding.length}, got ${file.embedding.length}`
         )
-        return { filename: file.filename, similarity: 0, excerpt: '' }
+        return { filename: file.filename, similarity: 0, excerpt: '', matches: 0 }
       }
 
       const similarity = cosineSimilarity(queryEmbedding, file.embedding)
+      const matches = countMatches(file.text, query)
 
       return {
         filename: file.filename,
         similarity,
         excerpt: createExcerpt(file.text, query),
+        matches,
       }
     })
 
     // Sort results by similarity score (descending - highest similarity first)
     // Filter out results below the 0.25 similarity threshold
-    const similarities = results
+    const filteredResults = results
       .sort((a, b) => b.similarity - a.similarity)
       .filter(result => result.similarity >= 0.25)
+      .map(({ filename, excerpt, matches }) => ({ filename, excerpt, matches }))
 
-    res.json(similarities)
+    // Return results with optional message
+    if (filteredResults.length === 0) {
+      res.json({
+        results: [],
+        message: `No results found for '${query}'`
+      })
+    } else {
+      res.json({ results: filteredResults })
+    }
   } catch (error) {
     // Log and return a 500 error if anything unexpected happens
     logError('Search failed: Unexpected error', error)

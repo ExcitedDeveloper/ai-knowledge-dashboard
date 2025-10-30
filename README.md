@@ -14,22 +14,28 @@ ai-knowledge-dashboard/
 
 ## Features
 
-- **Knowledge Management**: Organize and categorize your information
-- **AI-Powered Search**: Intelligent search capabilities across your knowledge base
-- **Interactive Dashboard**: Clean, intuitive interface for data visualization
-- **Real-time Updates**: Live synchronization of data changes
-- **Export/Import**: Flexible data management options
+- **File Upload**: Upload documents (.txt, .pdf, .docx) with drag-and-drop support
+- **Document Management**: View all uploaded documents with metadata and previews
+- **AI-Powered Semantic Search**: Search across documents using AI embeddings for intelligent results
+- **Interactive Dashboard**: Single-page dashboard with real-time updates
+- **Accessibility**: Full keyboard navigation and ARIA labels for screen readers
 
 ## Tech Stack
 
 ### Frontend
-- React with TypeScript
+- Next.js 14 with React 18
+- TypeScript for type safety
+- TailwindCSS for styling
+- Lucide React for icons
 - Modern ES modules
 - Responsive design with accessibility support
 
 ### Backend
 - Node.js with TypeScript
-- RESTful API architecture
+- Express.js for RESTful API
+- Multer for file uploads
+- PDF/DOCX parsing (pdf-parse, mammoth)
+- Cohere AI for semantic embeddings
 - Comprehensive error handling
 
 ## Getting Started
