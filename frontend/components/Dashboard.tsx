@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Upload, Search, FileText, Clock, Loader2, AlertCircle, X } from 'lucide-react'
+import { Upload, Search, FileText, Clock, X, AlertCircle } from 'lucide-react'
 import { uploadFile, getFiles, searchFiles } from '../services/api'
 import type { UploadedFile, SearchResult } from '../types/api'
+import { Button } from './Button'
+import { Card } from './Card'
 
 const Dashboard: React.FC = () => {
   // State management
@@ -45,7 +47,6 @@ const Dashboard: React.FC = () => {
       setIsUploading(true)
       setUploadError('')
       await uploadFile(file)
-      // Reload files after successful upload
       await loadFiles()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed'
@@ -107,7 +108,6 @@ const Dashboard: React.FC = () => {
     const query = event.target.value
     setSearchQuery(query)
 
-    // Trigger search on input change
     if (query.trim()) {
       handleSearch(query.trim())
     } else {
@@ -134,32 +134,42 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen w-full" style={{ backgroundColor: 'var(--color-background)' }}>
+      <div className="mx-auto max-w-[1280px] px-6 py-8 md:px-8 md:py-12">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <header className="mb-12">
+          <h1 className="heading-display mb-3" style={{ color: 'var(--color-text-primary)' }}>
             AI Knowledge Dashboard
           </h1>
-          <p className="text-gray-600">
+          <p className="body-large" style={{ color: 'var(--color-text-secondary)' }}>
             Upload, organize, and search your documents with AI-powered semantic search
           </p>
-        </div>
+        </header>
 
         {/* File Upload Section */}
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Upload Document</h2>
+        <section className="mb-12">
+          <h2 className="heading-subsection mb-6" style={{ color: 'var(--color-text-primary)' }}>
+            Upload Document
+          </h2>
 
           <label
             htmlFor="file-upload"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`
-              block border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-              ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
-              ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
+            className="block cursor-pointer transition-all duration-200"
+            style={{
+              minHeight: '240px',
+              borderRadius: 'var(--radius-lg)',
+              border: isDragging
+                ? '2px solid var(--color-primary)'
+                : '2px dashed var(--color-accent-clay)',
+              backgroundColor: isDragging
+                ? 'var(--color-background)'
+                : 'var(--color-background-tertiary)',
+              opacity: isUploading ? 0.5 : 1,
+              cursor: isUploading ? 'not-allowed' : 'pointer'
+            }}
           >
             <input
               id="file-upload"
@@ -171,186 +181,254 @@ const Dashboard: React.FC = () => {
               aria-label="Upload document file"
             />
 
-            <div className="flex flex-col items-center">
+            <div className="flex h-full min-h-[240px] flex-col items-center justify-center p-8">
               {isUploading ? (
-                <Loader2 className="w-12 h-12 text-blue-500 mb-3 animate-spin" />
+                <div className="animate-spin mb-4">
+                  <Upload className="h-16 w-16" style={{ color: 'var(--color-primary)' }} />
+                </div>
               ) : (
-                <Upload className="w-12 h-12 text-gray-400 mb-3" />
+                <Upload className="mb-4 h-16 w-16" style={{ color: 'var(--color-accent-clay)' }} />
               )}
 
-              <p className="text-lg font-medium text-gray-700 mb-1">
+              <p className="heading-small mb-2" style={{ color: 'var(--color-text-primary)' }}>
                 {isUploading ? 'Uploading...' : 'Upload a document'}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="body-small mb-2" style={{ color: 'var(--color-text-secondary)' }}>
                 Drag and drop or click to select (.txt, .pdf, .docx)
               </p>
-              <p className="text-xs text-gray-400 mt-2">Maximum file size: 2MB</p>
+              <p className="caption" style={{ color: 'var(--color-text-tertiary)' }}>
+                Maximum file size: 2MB
+              </p>
             </div>
           </label>
 
           {uploadError && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2" role="alert">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-red-900">Upload failed</p>
-                <p className="text-sm text-red-700">{uploadError}</p>
+            <div
+              className="mt-4 flex items-start gap-3 rounded-xl p-4"
+              style={{
+                backgroundColor: '#FEF2F2',
+                border: '1px solid var(--color-error)'
+              }}
+              role="alert"
+            >
+              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" style={{ color: 'var(--color-error)' }} />
+              <div className="flex-1">
+                <p className="heading-small" style={{ color: 'var(--color-text-primary)' }}>
+                  Upload failed
+                </p>
+                <p className="body-small mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                  {uploadError}
+                </p>
               </div>
               <button
                 onClick={() => setUploadError('')}
-                className="ml-auto text-red-600 hover:text-red-800"
+                className="ml-auto transition-colors hover:opacity-70"
+                style={{ color: 'var(--color-error)' }}
                 aria-label="Dismiss error"
               >
-                <X className="w-4 h-4" />
+                <X className="h-4 w-4" />
               </button>
             </div>
           )}
         </section>
 
         {/* Files List Section */}
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Documents</h2>
+        <section className="mb-12">
+          <h2 className="heading-subsection mb-6" style={{ color: 'var(--color-text-primary)' }}>
+            Your Documents
+          </h2>
 
           {filesError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2" role="alert">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-red-900">Failed to load files</p>
-                <p className="text-sm text-red-700">{filesError}</p>
+            <div
+              className="mb-6 flex items-start gap-3 rounded-xl p-4"
+              style={{
+                backgroundColor: '#FEF2F2',
+                border: '1px solid var(--color-error)'
+              }}
+              role="alert"
+            >
+              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" style={{ color: 'var(--color-error)' }} />
+              <div className="flex-1">
+                <p className="heading-small" style={{ color: 'var(--color-text-primary)' }}>
+                  Failed to load files
+                </p>
+                <p className="body-small mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                  {filesError}
+                </p>
               </div>
-              <button
-                onClick={loadFiles}
-                className="ml-auto text-sm font-medium text-blue-600 hover:text-blue-800"
-              >
+              <Button variant="ghost" size="sm" onClick={loadFiles}>
                 Retry
-              </button>
+              </Button>
             </div>
           )}
 
           {isLoadingFiles ? (
-            <div className="flex items-center justify-center py-12" role="status" aria-live="polite">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" aria-hidden="true" />
+            <div className="flex items-center justify-center py-16" role="status" aria-live="polite">
+              <div className="animate-spin">
+                <FileText className="h-12 w-12" style={{ color: 'var(--color-primary)' }} />
+              </div>
               <span className="sr-only">Loading files...</span>
             </div>
           ) : files.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-              <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No documents yet. Upload your first document to get started.</p>
-            </div>
+            <Card padding="lg">
+              <div className="flex flex-col items-center py-12 text-center">
+                <FileText className="mb-4 h-16 w-16" style={{ color: 'var(--color-accent-sand)' }} />
+                <p className="body" style={{ color: 'var(--color-text-secondary)' }}>
+                  No documents yet. Upload your first document to get started.
+                </p>
+              </div>
+            </Card>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Filename
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Preview
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Uploaded
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {files.map((file, index) => (
-                    <tr key={`${file.filename}-${index}`} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <FileText className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                          <span className="font-medium text-gray-900">{file.filename}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-gray-600 line-clamp-2">
-                          {file.text.substring(0, 150)}...
-                        </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <Clock className="w-4 h-4" />
+            <div className="space-y-4">
+              {files.map((file, index) => (
+                <Card key={`${file.filename}-${index}`} variant="elevated" padding="lg">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: 'var(--color-background-tertiary)' }}
+                    >
+                      <FileText className="h-6 w-6" style={{ color: 'var(--color-primary)' }} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <h3 className="heading-small mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                        {file.filename}
+                      </h3>
+                      <p
+                        className="body-small mb-3 line-clamp-2"
+                        style={{ color: 'var(--color-text-secondary)' }}
+                      >
+                        {file.text.substring(0, 200)}...
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" style={{ color: 'var(--color-text-tertiary)' }} />
+                        <span className="caption" style={{ color: 'var(--color-text-tertiary)' }}>
                           {formatTimestamp(file.timestamp)}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
           )}
         </section>
 
         {/* Search Section */}
         <section>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Search Documents</h2>
+          <h2 className="heading-subsection mb-6" style={{ color: 'var(--color-text-primary)' }}>
+            Search Documents
+          </h2>
 
-          <div className="relative mb-4">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <div className="relative mb-6">
+            <Search
+              className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2"
+              style={{ color: 'var(--color-text-tertiary)' }}
+            />
             <input
               type="search"
               value={searchQuery}
               onChange={handleSearchChange}
               placeholder="Search your documents..."
-              className="w-full h-12 pl-12 pr-4 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full h-[52px] rounded-xl pl-12 pr-4 transition-all focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{
+                backgroundColor: 'white',
+                border: '1.5px solid var(--color-border-medium)',
+                color: 'var(--color-text-primary)',
+                outlineColor: 'var(--color-primary)'
+              }}
               aria-label="Search documents"
             />
           </div>
 
           {searchError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2" role="alert">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-red-900">Search failed</p>
-                <p className="text-sm text-red-700">{searchError}</p>
+            <div
+              className="mb-6 flex items-start gap-3 rounded-xl p-4"
+              style={{
+                backgroundColor: '#FEF2F2',
+                border: '1px solid var(--color-error)'
+              }}
+              role="alert"
+            >
+              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" style={{ color: 'var(--color-error)' }} />
+              <div className="flex-1">
+                <p className="heading-small" style={{ color: 'var(--color-text-primary)' }}>
+                  Search failed
+                </p>
+                <p className="body-small mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                  {searchError}
+                </p>
               </div>
               <button
                 onClick={() => setSearchError('')}
-                className="ml-auto text-red-600 hover:text-red-800"
+                className="ml-auto transition-colors hover:opacity-70"
+                style={{ color: 'var(--color-error)' }}
                 aria-label="Dismiss error"
               >
-                <X className="w-4 h-4" />
+                <X className="h-4 w-4" />
               </button>
             </div>
           )}
 
           {isSearching ? (
-            <div className="flex items-center justify-center py-12" role="status" aria-live="polite">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" aria-hidden="true" />
+            <div className="flex items-center justify-center py-16" role="status" aria-live="polite">
+              <div className="animate-spin">
+                <Search className="h-12 w-12" style={{ color: 'var(--color-primary)' }} />
+              </div>
               <span className="sr-only">Searching...</span>
             </div>
           ) : searchMessage ? (
-            <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-              <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">{searchMessage}</p>
-            </div>
+            <Card padding="lg">
+              <div className="flex flex-col items-center py-12 text-center">
+                <Search className="mb-4 h-16 w-16" style={{ color: 'var(--color-accent-sand)' }} />
+                <p className="body" style={{ color: 'var(--color-text-secondary)' }}>
+                  {searchMessage}
+                </p>
+              </div>
+            </Card>
           ) : searchResults && searchResults.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {searchResults.map((result, index) => (
-                <div
-                  key={`${result.filename}-${index}`}
-                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                      <h3 className="font-semibold text-gray-900">{result.filename}</h3>
+                <Card key={`${result.filename}-${index}`} variant="elevated" padding="lg">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg"
+                        style={{ backgroundColor: 'var(--color-background-tertiary)' }}
+                      >
+                        <FileText className="h-5 w-5" style={{ color: 'var(--color-primary)' }} />
+                      </div>
+                      <h3 className="heading-small" style={{ color: 'var(--color-text-primary)' }}>
+                        {result.filename}
+                      </h3>
                     </div>
-                    <span className="text-sm font-medium text-blue-600 flex-shrink-0">
+                    <span
+                      className="caption flex-shrink-0 rounded-full px-3 py-1"
+                      style={{
+                        backgroundColor: 'var(--color-background-tertiary)',
+                        color: 'var(--color-primary)'
+                      }}
+                    >
                       {result.matches} match{result.matches !== 1 ? 'es' : ''}
                     </span>
                   </div>
                   <div
-                    className="text-sm text-gray-600"
+                    className="body-small"
+                    style={{ color: 'var(--color-text-secondary)' }}
                     dangerouslySetInnerHTML={{ __html: result.excerpt }}
                   />
-                </div>
+                </Card>
               ))}
             </div>
           ) : searchQuery ? (
-            <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-              <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No results found for "{searchQuery}"</p>
-            </div>
+            <Card padding="lg">
+              <div className="flex flex-col items-center py-12 text-center">
+                <Search className="mb-4 h-16 w-16" style={{ color: 'var(--color-accent-sand)' }} />
+                <p className="body" style={{ color: 'var(--color-text-secondary)' }}>
+                  No results found for "{searchQuery}"
+                </p>
+              </div>
+            </Card>
           ) : null}
         </section>
       </div>
