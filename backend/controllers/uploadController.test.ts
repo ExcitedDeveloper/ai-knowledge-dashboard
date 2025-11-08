@@ -119,7 +119,7 @@ describe('uploadController', () => {
           text: 'Extracted PDF text content',
           timestamp: expect.any(Number),
           embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
-        })
+        }, 'application/pdf')
         expect(mockStatus).toHaveBeenCalledWith(200)
         expect(mockJson).toHaveBeenCalledWith({
           filename: 'test.pdf',
@@ -181,7 +181,7 @@ describe('uploadController', () => {
           text: 'Extracted Word document text',
           timestamp: expect.any(Number),
           embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
-        })
+        }, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
         expect(mockStatus).toHaveBeenCalledWith(200)
         expect(mockJson).toHaveBeenCalledWith({
           filename: 'test.docx',
@@ -239,7 +239,7 @@ describe('uploadController', () => {
           text: 'Plain text file content',
           timestamp: expect.any(Number),
           embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
-        })
+        }, 'text/plain')
         expect(mockStatus).toHaveBeenCalledWith(200)
         expect(mockJson).toHaveBeenCalledWith({
           filename: 'test.txt',

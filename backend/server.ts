@@ -2,10 +2,10 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
-import uploadRoutes from './routes/uploadRoutes'
-import filesRoutes from './routes/filesRoutes'
-import searchRoutes from './routes/searchRoutes'
-import { logRequest, logInfo } from './utils/logger'
+import uploadRoutes from './routes/uploadRoutes.js'
+import filesRoutes from './routes/filesRoutes.js'
+import searchRoutes from './routes/searchRoutes.js'
+import { logRequest, logInfo } from './utils/logger.js'
 
 // Create Express application instance
 const app = express()

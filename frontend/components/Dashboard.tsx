@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { Upload, Search, FileText, Clock, X, AlertCircle } from 'lucide-react'
-import { uploadFile, getFiles, searchFiles } from '../services/api'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { Upload, Search, FileText, Clock, X, AlertCircle, Trash2 } from 'lucide-react'
+import { uploadFile, getFiles, searchFiles, deleteFile } from '../services/api'
 import type { UploadedFile, SearchResult } from '../types/api'
 import { Button } from './Button'
 import { Card } from './Card'
@@ -19,9 +19,17 @@ const Dashboard: React.FC = () => {
   const [uploadError, setUploadError] = useState<string>('')
   const [filesError, setFilesError] = useState<string>('')
   const [searchError, setSearchError] = useState<string>('')
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
 
   // Drag and drop states
   const [isDragging, setIsDragging] = useState(false)
+
+  // Confirmation dialog state
+  const [fileToDelete, setFileToDelete] = useState<{ id: string; filename: string } | null>(null)
+
+  // Refs for debouncing and race condition prevention
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const currentQueryRef = useRef<string>('')
 
   // Load files on mount
   useEffect(() => {
@@ -48,6 +56,16 @@ const Dashboard: React.FC = () => {
       setUploadError('')
       await uploadFile(file)
       await loadFiles()
+
+      // Clear search input after successful upload
+      setSearchQuery('')
+      setSearchResults([])
+      setSearchMessage('')
+      setSearchError('')
+      currentQueryRef.current = ''
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed'
       setUploadError(errorMessage)
@@ -84,38 +102,108 @@ const Dashboard: React.FC = () => {
   }, [])
 
   const handleSearch = async (query: string) => {
+    if (!query.trim()) return
+
+    // Update the current query ref
+    currentQueryRef.current = query
+
     try {
       setIsSearching(true)
       setSearchError('')
       setSearchMessage('')
 
       const response = await searchFiles(query)
-      setSearchResults(response.results)
 
-      if (response.message) {
-        setSearchMessage(response.message)
+      // Only update state if this is still the current query (prevent race conditions)
+      if (currentQueryRef.current === query) {
+        setSearchResults(response.results)
+
+        if (response.message) {
+          setSearchMessage(response.message)
+        }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Search failed'
-      setSearchError(errorMessage)
-      setSearchResults([])
+      // Only update error state if this is still the current query
+      if (currentQueryRef.current === query) {
+        const errorMessage = error instanceof Error ? error.message : 'Search failed'
+        setSearchError(errorMessage)
+        setSearchResults([])
+      }
     } finally {
+      // Only update loading state if this is still the current query
+      if (currentQueryRef.current === query) {
+        setIsSearching(false)
+      }
+    }
+  }
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const query = event.target.value
+    setSearchQuery(query)
+
+    // Clear any pending search timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    if (query.trim()) {
+      // Debounce search - wait 300ms after user stops typing
+      searchTimeoutRef.current = setTimeout(() => {
+        handleSearch(query.trim())
+      }, 300)
+    } else {
+      // Clear results immediately if query is empty
+      currentQueryRef.current = ''
+      setSearchResults([])
+      setSearchMessage('')
+      setSearchError('')
       setIsSearching(false)
     }
   }
 
-  const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const query = event.target.value
-    setSearchQuery(query)
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
 
-    if (query.trim()) {
-      handleSearch(query.trim())
-    } else {
+  const handleDeleteClick = (fileId: string, filename: string) => {
+    setFileToDelete({ id: fileId, filename })
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!fileToDelete?.id) return
+
+    try {
+      setDeletingFileId(fileToDelete.id)
+      setFilesError('')
+      await deleteFile(fileToDelete.id)
+      await loadFiles()
+
+      // Clear search input after successful deletion
+      setSearchQuery('')
       setSearchResults([])
       setSearchMessage('')
       setSearchError('')
+      currentQueryRef.current = ''
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete file'
+      setFilesError(errorMessage)
+    } finally {
+      setDeletingFileId(null)
+      setFileToDelete(null)
     }
-  }, [])
+  }
+
+  const handleCancelDelete = () => {
+    setFileToDelete(null)
+  }
 
   const formatTimestamp = (timestamp: number): string => {
     const date = new Date(timestamp)
@@ -134,8 +222,45 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen w-full" style={{ backgroundColor: 'var(--color-background)' }}>
-      <div className="mx-auto max-w-[1280px] px-6 py-8 md:px-8 md:py-12">
+    <>
+      {/* Confirmation Dialog */}
+      {fileToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+          onClick={handleCancelDelete}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+        >
+          <div
+            className="mx-4 max-w-md rounded-xl p-6"
+            style={{ backgroundColor: 'white' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="delete-dialog-title"
+              className="heading-small mb-4"
+              style={{ color: 'var(--color-text-primary)' }}
+            >
+              Delete Document?
+            </h3>
+            <p className="body mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+              Are you sure you want to delete "{fileToDelete.filename}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="secondary" onClick={handleCancelDelete}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleConfirmDelete}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen w-full" style={{ backgroundColor: 'var(--color-background)' }}>
+        <div className="mx-auto max-w-[1280px] px-6 py-8 md:px-8 md:py-12">
         {/* Header */}
         <header className="mb-12">
           <h1 className="heading-display mb-3" style={{ color: 'var(--color-text-primary)' }}>
@@ -307,6 +432,22 @@ const Dashboard: React.FC = () => {
                         </span>
                       </div>
                     </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => file.id && handleDeleteClick(file.id, file.filename)}
+                      disabled={deletingFileId === file.id || !file.id}
+                      aria-label={`Delete ${file.filename}`}
+                    >
+                      {deletingFileId === file.id ? (
+                        <div className="animate-spin">
+                          <Trash2 className="h-4 w-4" />
+                        </div>
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </Card>
               ))}
@@ -431,8 +572,9 @@ const Dashboard: React.FC = () => {
             </Card>
           ) : null}
         </section>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

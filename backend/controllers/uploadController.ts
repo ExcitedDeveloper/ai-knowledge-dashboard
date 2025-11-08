@@ -2,10 +2,10 @@ import { Request, Response } from 'express'
 import fs from 'fs'
 import pdfParse from 'pdf-parse'
 import mammoth from 'mammoth'
-import { UploadedFile } from '../lib/store'
-import { addFile, validateFile } from './filesController'
-import { logInfo, logError } from '../utils/logger'
-import { createEmbedding } from '../services/embeddingService'
+import { UploadedFile } from '../lib/store.js'
+import { addFile, validateFile } from './filesController.js'
+import { logInfo, logError } from '../utils/logger.js'
+import { createEmbedding } from '../services/embeddingService.js'
 
 /**
  * Constructs an UploadedFile object with metadata and embedding from the uploaded file.
@@ -58,8 +58,8 @@ export const handleFileUpload = async (req: Request, res: Response) => {
 
     const uploadedFile = await getUploadedFile(file, text)
 
-    // Save uploaded file information to the store
-    addFile(uploadedFile)
+    // Save uploaded file information to Supabase
+    await addFile(uploadedFile, file.mimetype)
 
     logInfo(`File uploaded: ${file.originalname}`)
 

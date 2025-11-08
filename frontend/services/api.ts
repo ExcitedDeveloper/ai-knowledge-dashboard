@@ -65,3 +65,17 @@ export const searchFiles = async (query: string): Promise<SearchResponse> => {
 
   return response.json()
 }
+
+/**
+ * Delete a file by ID
+ */
+export const deleteFile = async (id: string): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/api/files/${id}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+    throw new ApiError(errorData.error || 'Failed to delete file', response.status)
+  }
+}

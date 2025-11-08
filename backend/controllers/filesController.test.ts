@@ -1,6 +1,15 @@
-import { addFile, getFiles, validateFile } from './filesController'
-import store, { UploadedFile } from '../lib/store'
+import { addFile, deleteFile, getFiles, validateFile } from './filesController'
+import { UploadedFile } from '../lib/store'
 import { Response } from 'express'
+import { supabase } from '../supabase/supabaseClient'
+import { UUID } from 'crypto'
+
+// Mock Supabase client
+jest.mock('../supabase/supabaseClient', () => ({
+  supabase: {
+    from: jest.fn(),
+  },
+}))
 
 // Mock response object helper
 const mockResponse = () => {
@@ -13,13 +22,11 @@ const mockResponse = () => {
 
 describe('filesController', () => {
   beforeEach(() => {
-    // Clear store before each test
-    store.files = []
     jest.clearAllMocks()
   })
 
   describe('addFile', () => {
-    test('should add a file to the store', () => {
+    test('should add a file to Supabase', async () => {
       const mockFile: UploadedFile = {
         filename: 'test.pdf',
         text: 'Test content',
@@ -27,81 +34,144 @@ describe('filesController', () => {
         embedding: [0.1, 0.2, 0.3],
       }
 
-      addFile(mockFile)
+      const mockInsert = jest.fn().mockResolvedValue({ error: null })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        insert: mockInsert,
+      })
 
-      expect(store.files).toHaveLength(1)
-      expect(store.files[0]).toEqual(mockFile)
+      await addFile(mockFile, 'application/pdf')
+
+      expect(supabase.from).toHaveBeenCalledWith('files')
+      expect(mockInsert).toHaveBeenCalledWith({
+        filename: mockFile.filename,
+        mimetype: 'application/pdf',
+        content: mockFile.text,
+        embedding: mockFile.embedding,
+      })
     })
 
-    test('should add multiple files to the store', () => {
-      const mockFile1: UploadedFile = {
-        filename: 'test1.pdf',
-        text: 'Test content 1',
+    test('should throw error when Supabase insert fails', async () => {
+      const mockFile: UploadedFile = {
+        filename: 'test.pdf',
+        text: 'Test content',
         timestamp: Date.now(),
         embedding: [0.1, 0.2, 0.3],
       }
 
-      const mockFile2: UploadedFile = {
-        filename: 'test2.pdf',
-        text: 'Test content 2',
-        timestamp: Date.now() + 1000,
-        embedding: [0.4, 0.5, 0.6],
-      }
+      const mockError = new Error('Database error')
+      const mockInsert = jest.fn().mockResolvedValue({ error: mockError })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        insert: mockInsert,
+      })
 
-      addFile(mockFile1)
-      addFile(mockFile2)
-
-      expect(store.files).toHaveLength(2)
-      expect(store.files[0]).toEqual(mockFile1)
-      expect(store.files[1]).toEqual(mockFile2)
+      await expect(addFile(mockFile, 'application/pdf')).rejects.toThrow()
     })
   })
 
   describe('getFiles', () => {
-    test('should return empty array when no files exist', () => {
-      const files = getFiles()
+    test('should return empty array when no files exist', async () => {
+      const mockSelect = jest.fn().mockReturnValue({
+        order: jest.fn().mockResolvedValue({ data: [], error: null }),
+      })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
+
+      const files = await getFiles()
 
       expect(files).toEqual([])
       expect(files).toHaveLength(0)
     })
 
-    test('should return all files from the store', () => {
-      const mockFiles: UploadedFile[] = [
+    test('should return all files from Supabase', async () => {
+      const mockDbFiles = [
         {
           filename: 'test1.pdf',
-          text: 'Test content 1',
-          timestamp: Date.now(),
+          content: 'Test content 1',
+          uploaded_at: new Date().toISOString(),
           embedding: [0.1, 0.2, 0.3],
         },
         {
           filename: 'test2.pdf',
-          text: 'Test content 2',
-          timestamp: Date.now() + 1000,
+          content: 'Test content 2',
+          uploaded_at: new Date().toISOString(),
           embedding: [0.4, 0.5, 0.6],
         },
       ]
 
-      // Add files to store
-      mockFiles.forEach(file => addFile(file))
+      const mockSelect = jest.fn().mockReturnValue({
+        order: jest.fn().mockResolvedValue({ data: mockDbFiles, error: null }),
+      })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
 
-      const files = getFiles()
+      const files = await getFiles()
 
-      expect(files).toEqual(mockFiles)
       expect(files).toHaveLength(2)
+      expect(files[0].filename).toBe('test1.pdf')
+      expect(files[1].filename).toBe('test2.pdf')
     })
 
-    test('should return reference to actual store array', () => {
-      const mockFile: UploadedFile = {
-        filename: 'test.pdf',
-        text: 'Test content',
-        timestamp: Date.now(),
-        embedding: [0.1, 0.2, 0.3],
-      }
+    test('should throw error when Supabase query fails', async () => {
+      const mockError = new Error('Database error')
+      const mockSelect = jest.fn().mockReturnValue({
+        order: jest.fn().mockResolvedValue({ data: null, error: mockError }),
+      })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
 
-      addFile(mockFile)
-      const files = getFiles()
+      await expect(getFiles()).rejects.toThrow()
+    })
+  })
 
-      expect(files).toBe(store.files)
+  describe('deleteFile', () => {
+    test('should delete a file from Supabase', async () => {
+      const testId = '123e4567-e89b-12d3-a456-426614174000' as UUID
+
+      const mockEq = jest.fn().mockResolvedValue({ error: null })
+      const mockDelete = jest.fn().mockReturnValue({
+        eq: mockEq,
+      })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        delete: mockDelete,
+      })
+
+      await deleteFile(testId)
+
+      expect(supabase.from).toHaveBeenCalledWith('files')
+      expect(mockDelete).toHaveBeenCalled()
+      expect(mockEq).toHaveBeenCalledWith('id', testId)
+    })
+
+    test('should throw error when Supabase delete fails', async () => {
+      const testId = '123e4567-e89b-12d3-a456-426614174000' as UUID
+      const mockError = new Error('Database error')
+
+      const mockEq = jest.fn().mockResolvedValue({ error: mockError })
+      const mockDelete = jest.fn().mockReturnValue({
+        eq: mockEq,
+      })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        delete: mockDelete,
+      })
+
+      await expect(deleteFile(testId)).rejects.toThrow()
+    })
+
+    test('should throw error on database exception', async () => {
+      const testId = '123e4567-e89b-12d3-a456-426614174000' as UUID
+
+      const mockEq = jest.fn().mockRejectedValue(new Error('Connection error'))
+      const mockDelete = jest.fn().mockReturnValue({
+        eq: mockEq,
+      })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        delete: mockDelete,
+      })
+
+      await expect(deleteFile(testId)).rejects.toThrow('Connection error')
     })
   })
 

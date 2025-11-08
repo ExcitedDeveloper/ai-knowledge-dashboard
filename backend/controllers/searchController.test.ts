@@ -10,10 +10,18 @@ import {
 import store, { UploadedFile } from '../lib/store'
 import { SearchQuery } from '../types/search'
 import { createEmbedding } from '../services/embeddingService'
+import { supabase } from '../supabase/supabaseClient'
 
 // Mock the embedding service
 jest.mock('../services/embeddingService')
 const mockCreateEmbedding = createEmbedding as jest.MockedFunction<typeof createEmbedding>
+
+// Mock Supabase client
+jest.mock('../supabase/supabaseClient', () => ({
+  supabase: {
+    from: jest.fn(),
+  },
+}))
 
 // Mock response object
 const mockResponse = () => {
@@ -26,8 +34,6 @@ const mockResponse = () => {
 
 describe('searchController', () => {
   beforeEach(() => {
-    // Clear store before each test
-    store.files = []
     jest.clearAllMocks()
   })
 
@@ -37,7 +43,10 @@ describe('searchController', () => {
     })
 
     test('should return empty array when no files in store', async () => {
-      store.files = []
+      const mockSelect = jest.fn().mockResolvedValue({ data: [], error: null })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
 
       const req = {
         query: { q: 'test query' },
@@ -51,28 +60,32 @@ describe('searchController', () => {
     })
 
     test('should return results sorted by similarity (descending)', async () => {
-      const mockFiles: UploadedFile[] = [
+      const mockDbFiles = [
         {
           filename: 'low-match.pdf',
-          text: 'JavaScript is great for web development',
-          timestamp: Date.now(),
+          content: 'JavaScript is great for web development',
+          uploaded_at: new Date().toISOString(),
           embedding: [0.1, 0.2, 0.3],
         },
         {
           filename: 'high-match.pdf',
-          text: 'Python is also great for backend development',
-          timestamp: Date.now() + 1000,
+          content: 'Python is also great for backend development',
+          uploaded_at: new Date().toISOString(),
           embedding: [0.9, 0.8, 0.7],
         },
         {
           filename: 'mid-match.pdf',
-          text: 'Java is used for enterprise applications',
-          timestamp: Date.now() + 2000,
+          content: 'Java is used for enterprise applications',
+          uploaded_at: new Date().toISOString(),
           embedding: [0.5, 0.5, 0.5],
         },
       ]
 
-      store.files = mockFiles
+      const mockSelect = jest.fn().mockResolvedValue({ data: mockDbFiles, error: null })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
+
       mockCreateEmbedding.mockResolvedValue([1.0, 0.9, 0.8])
 
       const req = {
@@ -117,14 +130,18 @@ describe('searchController', () => {
     })
 
     test('should create excerpts with highlighted query terms', async () => {
-      const mockFile: UploadedFile = {
+      const mockDbFile = {
         filename: 'test.pdf',
-        text: 'This is some important content about testing',
-        timestamp: Date.now(),
+        content: 'This is some important content about testing',
+        uploaded_at: new Date().toISOString(),
         embedding: [0.1, 0.2, 0.3],
       }
 
-      store.files = [mockFile]
+      const mockSelect = jest.fn().mockResolvedValue({ data: [mockDbFile], error: null })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
+
       mockCreateEmbedding.mockResolvedValue([0.1, 0.2, 0.3])
 
       const req = {
@@ -140,22 +157,26 @@ describe('searchController', () => {
     })
 
     test('should handle files without embeddings', async () => {
-      const mockFiles: UploadedFile[] = [
+      const mockDbFiles = [
         {
           filename: 'with-embedding.pdf',
-          text: 'Has embedding',
-          timestamp: Date.now(),
+          content: 'Has embedding',
+          uploaded_at: new Date().toISOString(),
           embedding: [0.1, 0.2, 0.3],
         },
         {
           filename: 'no-embedding.pdf',
-          text: 'No embedding',
-          timestamp: Date.now(),
+          content: 'No embedding',
+          uploaded_at: new Date().toISOString(),
           embedding: undefined,
         },
       ]
 
-      store.files = mockFiles
+      const mockSelect = jest.fn().mockResolvedValue({ data: mockDbFiles, error: null })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
+
       mockCreateEmbedding.mockResolvedValue([0.1, 0.2, 0.3])
 
       const req = {
@@ -173,14 +194,18 @@ describe('searchController', () => {
     })
 
     test('should handle embedding dimension mismatch', async () => {
-      const mockFile: UploadedFile = {
+      const mockDbFile = {
         filename: 'wrong-dimensions.pdf',
-        text: 'Test content',
-        timestamp: Date.now(),
+        content: 'Test content',
+        uploaded_at: new Date().toISOString(),
         embedding: [0.1, 0.2], // 2 dimensions
       }
 
-      store.files = [mockFile]
+      const mockSelect = jest.fn().mockResolvedValue({ data: [mockDbFile], error: null })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
+
       mockCreateEmbedding.mockResolvedValue([0.1, 0.2, 0.3]) // 3 dimensions
 
       const req = {
@@ -197,14 +222,18 @@ describe('searchController', () => {
     })
 
     test('should handle embedding service failure', async () => {
-      const mockFile: UploadedFile = {
+      const mockDbFile = {
         filename: 'test.pdf',
-        text: 'Some content',
-        timestamp: Date.now(),
+        content: 'Some content',
+        uploaded_at: new Date().toISOString(),
         embedding: [0.1, 0.2, 0.3],
       }
 
-      store.files = [mockFile]
+      const mockSelect = jest.fn().mockResolvedValue({ data: [mockDbFile], error: null })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
+
       mockCreateEmbedding.mockRejectedValue(new Error('API error'))
 
       const req = {
@@ -221,14 +250,18 @@ describe('searchController', () => {
     })
 
     test('should handle invalid embedding format from service', async () => {
-      const mockFile: UploadedFile = {
+      const mockDbFile = {
         filename: 'test.pdf',
-        text: 'Some content',
-        timestamp: Date.now(),
+        content: 'Some content',
+        uploaded_at: new Date().toISOString(),
         embedding: [0.1, 0.2, 0.3],
       }
 
-      store.files = [mockFile]
+      const mockSelect = jest.fn().mockResolvedValue({ data: [mockDbFile], error: null })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
+
       mockCreateEmbedding.mockResolvedValue([] as number[])
 
       const req = {
@@ -249,14 +282,18 @@ describe('searchController', () => {
                        'Somewhere in the middle we have the important keyword that we are searching for. ' +
                        'And then there is more content after the keyword.'
 
-      const mockFile: UploadedFile = {
+      const mockDbFile = {
         filename: 'long.pdf',
-        text: longText,
-        timestamp: Date.now(),
+        content: longText,
+        uploaded_at: new Date().toISOString(),
         embedding: [0.1, 0.2, 0.3],
       }
 
-      store.files = [mockFile]
+      const mockSelect = jest.fn().mockResolvedValue({ data: [mockDbFile], error: null })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
+
       mockCreateEmbedding.mockResolvedValue([0.1, 0.2, 0.3])
 
       const req = {
@@ -273,28 +310,32 @@ describe('searchController', () => {
     })
 
     test('should filter out results below 0.25 similarity threshold', async () => {
-      const mockFiles: UploadedFile[] = [
+      const mockDbFiles = [
         {
           filename: 'high-similarity.pdf',
-          text: 'Highly relevant content',
-          timestamp: Date.now(),
+          content: 'Highly relevant content',
+          uploaded_at: new Date().toISOString(),
           embedding: [1.0, 0.9, 0.8], // Will have high similarity
         },
         {
           filename: 'medium-similarity.pdf',
-          text: 'Somewhat relevant content',
-          timestamp: Date.now() + 1000,
+          content: 'Somewhat relevant content',
+          uploaded_at: new Date().toISOString(),
           embedding: [0.3, 0.3, 0.3], // Will have medium similarity
         },
         {
           filename: 'low-similarity.pdf',
-          text: 'Not very relevant',
-          timestamp: Date.now() + 2000,
+          content: 'Not very relevant',
+          uploaded_at: new Date().toISOString(),
           embedding: [-0.5, -0.5, -0.5], // Will have low similarity (negative, opposite direction)
         },
       ]
 
-      store.files = mockFiles
+      const mockSelect = jest.fn().mockResolvedValue({ data: mockDbFiles, error: null })
+      ;(supabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      })
+
       mockCreateEmbedding.mockResolvedValue([1.0, 0.9, 0.8])
 
       const req = {

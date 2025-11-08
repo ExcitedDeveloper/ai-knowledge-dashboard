@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
-import { handleSearch } from '../controllers/searchController'
-import { SearchQuery } from '../types/search'
+import { handleSearch } from '../controllers/searchController.js'
+import { SearchQuery } from '../types/search.js'
 
 const router = Router()
 

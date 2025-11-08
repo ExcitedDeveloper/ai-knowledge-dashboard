@@ -1,6 +1,7 @@
 // API request and response types
 
 export interface UploadedFile {
+  id?: string
   filename: string
   text: string
   timestamp: number

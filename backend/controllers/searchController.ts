@@ -5,12 +5,13 @@
  * Provides utilities for query matching, excerpt creation, and highlighting.
  */
 
-import store, { UploadedFile } from '../lib/store'
+import { UploadedFile } from '../lib/store.js'
 import { Request, Response } from 'express'
-import { SearchQuery } from '../types/search'
-import { logInfo, logError } from '../utils/logger'
-import { createEmbedding } from '../services/embeddingService'
-import { cosineSimilarity } from '../utils/math'
+import { SearchQuery } from '../types/search.js'
+import { logInfo, logError } from '../utils/logger.js'
+import { createEmbedding } from '../services/embeddingService.js'
+import { cosineSimilarity } from '../utils/math.js'
+import { supabase } from '../supabase/supabaseClient.js'
 
 /**
  * Escapes special regular expression characters in a string
@@ -124,15 +125,26 @@ export const handleSearch = async (
     return
   }
 
-  // Return empty results if no files have been uploaded yet
-  if (store.files.length <= 0) {
-    res.json({ results: [], message: 'No documents available to search' })
-    return
-  }
-
   try {
     const query = req.query.q
     logInfo(`Search query: "${query}"`)
+
+    // Fetch all files from Supabase
+    const { data: files, error: fetchError } = await supabase
+      .from('files')
+      .select('*')
+
+    if (fetchError) {
+      logError('Failed to fetch files from Supabase', fetchError)
+      res.status(500).json({ error: 'Failed to retrieve files for search' })
+      return
+    }
+
+    // Return empty results if no files have been uploaded yet
+    if (!files || files.length === 0) {
+      res.json({ results: [], message: 'No documents available to search' })
+      return
+    }
 
     // Generate embedding for the query using Cohere
     let queryEmbedding: number[]
@@ -152,29 +164,35 @@ export const handleSearch = async (
     }
 
     // Compare query embedding with all stored file embeddings
-    const results = store.files.map((file) => {
+    const results = files.map((file) => {
       // Guard against missing embeddings
       if (!file.embedding) {
         logError(`File "${file.filename}" has no embedding - skipping`)
         return { filename: file.filename, similarity: 0, excerpt: '', matches: 0 }
       }
 
+      // Parse embedding if it's a string (Supabase returns vectors as strings)
+      const embedding = typeof file.embedding === 'string'
+        ? JSON.parse(file.embedding)
+        : file.embedding
+
       // Validate embedding dimensions match
-      if (file.embedding.length !== queryEmbedding.length) {
+      if (embedding.length !== queryEmbedding.length) {
         logError(
           `Embedding dimension mismatch for file "${file.filename}": ` +
-          `expected ${queryEmbedding.length}, got ${file.embedding.length}`
+          `expected ${queryEmbedding.length}, got ${embedding.length}`
         )
         return { filename: file.filename, similarity: 0, excerpt: '', matches: 0 }
       }
 
-      const similarity = cosineSimilarity(queryEmbedding, file.embedding)
-      const matches = countMatches(file.text, query)
+      const similarity = cosineSimilarity(queryEmbedding, embedding)
+      const content = file.content || ''
+      const matches = countMatches(content, query)
 
       return {
         filename: file.filename,
         similarity,
-        excerpt: createExcerpt(file.text, query),
+        excerpt: createExcerpt(content, query),
         matches,
       }
     })
