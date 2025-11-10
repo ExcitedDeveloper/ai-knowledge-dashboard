@@ -21,7 +21,8 @@
       "Bash(npm test:*)",
       "Bash(cat:*)",
       "Bash(find:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(timeout 5 npm start)"
     ],
     "deny": [],
     "ask": []
