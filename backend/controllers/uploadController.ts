@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import fs from 'fs'
-import pdfParse from 'pdf-parse'
+import { PDFParse } from 'pdf-parse'
 import mammoth from 'mammoth'
 import { UploadedFile } from '../lib/store.js'
 import { addFile, validateFile } from './filesController.js'
@@ -42,7 +42,8 @@ export const handleFileUpload = async (req: Request, res: Response) => {
     // Determine file type and extract text
     if (file.mimetype === 'application/pdf') {
       const dataBuffer = fs.readFileSync(file.path)
-      const pdfData = await pdfParse(dataBuffer)
+      const parser = new PDFParse({ data: dataBuffer })
+      const pdfData = await parser.getText()
       text = pdfData.text
     } else if (
       file.mimetype ===

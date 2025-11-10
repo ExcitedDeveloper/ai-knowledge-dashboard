@@ -1,6 +1,5 @@
 // Mock dependencies BEFORE imports
 jest.mock('fs')
-jest.mock('pdf-parse')
 jest.mock('mammoth')
 jest.mock('./filesController', () => ({
   addFile: jest.fn(),
@@ -14,9 +13,17 @@ jest.mock('../utils/logger', () => ({
   logError: jest.fn(),
 }))
 
+// Mock PDFParse class
+const mockGetText = jest.fn()
+jest.mock('pdf-parse', () => ({
+  PDFParse: jest.fn().mockImplementation(() => ({
+    getText: mockGetText,
+  })),
+}))
+
 import { Request, Response } from 'express'
 import fs from 'fs'
-import pdfParse from 'pdf-parse'
+import { PDFParse } from 'pdf-parse'
 import mammoth from 'mammoth'
 import { handleFileUpload } from './uploadController'
 import { addFile } from './filesController'
@@ -24,7 +31,6 @@ import store from '../lib/store'
 import { CohereClient } from 'cohere-ai'
 
 const mockFs = fs as jest.Mocked<typeof fs>
-const mockPdfParse = pdfParse as jest.MockedFunction<typeof pdfParse>
 const mockMammoth = mammoth as jest.Mocked<typeof mammoth>
 const mockAddFile = addFile as jest.MockedFunction<typeof addFile>
 const mockValidateFile = require('./filesController').validateFile as jest.MockedFunction<any>
@@ -103,12 +109,12 @@ describe('uploadController', () => {
         const mockBuffer = Buffer.from('pdf content')
 
         mockFs.readFileSync.mockReturnValue(mockBuffer)
-        mockPdfParse.mockResolvedValue(mockPdfData)
+        mockGetText.mockResolvedValue(mockPdfData)
 
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
         expect(mockFs.readFileSync).toHaveBeenCalledWith('/path/to/test.pdf')
-        expect(mockPdfParse).toHaveBeenCalledWith(mockBuffer)
+        expect(mockGetText).toHaveBeenCalled()
         expect(mockEmbed).toHaveBeenCalledWith({
           model: 'embed-english-v3.0',
           texts: ['Extracted PDF text content'],
@@ -140,7 +146,7 @@ describe('uploadController', () => {
         mockReq = { file: mockFile }
 
         mockFs.readFileSync.mockReturnValue(Buffer.from('pdf content'))
-        mockPdfParse.mockRejectedValue(new Error('PDF parsing failed'))
+        mockGetText.mockRejectedValue(new Error('PDF parsing failed'))
 
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
