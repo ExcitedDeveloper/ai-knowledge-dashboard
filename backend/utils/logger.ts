@@ -13,13 +13,19 @@ const formatTimestamp = (): string => {
   return new Date().toISOString()
 }
 
-const log = (level: LogLevel, message: string): void => {
+const log = (level: LogLevel, message: string, data?: unknown): void => {
   const timestamp = formatTimestamp()
-  console.log(`[${level}] ${message} - ${timestamp}`)
+  const logMessage = `[${level}] ${message} - ${timestamp}`
+
+  if (data) {
+    console.log(logMessage, JSON.stringify(data, null, 2))
+  } else {
+    console.log(logMessage)
+  }
 }
 
-export const logInfo = (message: string): void => {
-  log(LogLevel.INFO, message)
+export const logInfo = (message: string, data?: unknown): void => {
+  log(LogLevel.INFO, message, data)
 }
 
 export const logError = (message: string, error?: unknown): void => {
@@ -29,7 +35,7 @@ export const logError = (message: string, error?: unknown): void => {
   if (error instanceof Error && error.stack) {
     console.error(error.stack)
   } else if (error) {
-    console.error(error)
+    console.error(JSON.stringify(error, null, 2))
   }
 }
 
