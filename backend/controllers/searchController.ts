@@ -119,8 +119,25 @@ export const handleSearch = async (
   req: Request<{}, {}, {}, SearchQuery>,
   res: Response
 ): Promise<void> => {
+  // Log incoming request details for debugging
+  logInfo('=== SEARCH REQUEST RECEIVED ===', {
+    method: req.method,
+    url: req.url,
+    query: req.query,
+    headers: {
+      origin: req.headers.origin,
+      host: req.headers.host,
+      userAgent: req.headers['user-agent'],
+      contentType: req.headers['content-type'],
+      referer: req.headers.referer
+    },
+    ip: req.ip || req.socket.remoteAddress,
+    timestamp: new Date().toISOString()
+  })
+
   // Validate that a non-empty search query was provided
   if (!req.query.q || req.query.q.trim() === '') {
+    logError('Search validation failed: Missing or empty query')
     res.status(400).json({ error: 'Missing or empty search query.' })
     return
   }
@@ -130,33 +147,62 @@ export const handleSearch = async (
     logInfo(`Search query: "${query}"`)
 
     // Fetch all files from Supabase
+    logInfo('Attempting to fetch files from Supabase...', {
+      supabaseConfigured: !!supabase,
+      tableName: 'files'
+    })
+
     const { data: files, error: fetchError } = await supabase
       .from('files')
       .select('*')
 
     if (fetchError) {
-      logError('Failed to fetch files from Supabase', fetchError)
+      logError('Failed to fetch files from Supabase', {
+        error: fetchError,
+        code: fetchError.code,
+        message: fetchError.message,
+        details: fetchError.details,
+        hint: fetchError.hint
+      })
       res.status(500).json({ error: 'Failed to retrieve files for search' })
       return
     }
 
+    logInfo('Successfully fetched files from Supabase', {
+      fileCount: files?.length || 0,
+      hasFiles: !!files && files.length > 0
+    })
+
     // Return empty results if no files have been uploaded yet
     if (!files || files.length === 0) {
+      logInfo('No files found in database')
       res.json({ results: [], message: 'No documents available to search' })
       return
     }
 
+    logInfo(`Found ${files.length} file(s) to search through`)
+
     // Generate embedding for the query using Cohere
     let queryEmbedding: number[]
     try {
+      logInfo('Generating embedding for search query...', {
+        queryLength: query.length,
+        queryPreview: query.substring(0, 50)
+      })
       queryEmbedding = await createEmbedding(query)
 
       // Validate embedding format
       if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
         throw new Error('Invalid embedding format received from service')
       }
+      logInfo(`Query embedding generated successfully (dimension: ${queryEmbedding.length})`)
     } catch (embeddingError) {
-      logError('Failed to generate query embedding', embeddingError)
+      logError('Failed to generate query embedding', {
+        error: embeddingError,
+        errorType: embeddingError instanceof Error ? embeddingError.constructor.name : typeof embeddingError,
+        errorMessage: embeddingError instanceof Error ? embeddingError.message : String(embeddingError),
+        errorStack: embeddingError instanceof Error ? embeddingError.stack : undefined
+      })
       res.status(500).json({
         error: 'Failed to process search query. Please try again.'
       })
@@ -164,6 +210,7 @@ export const handleSearch = async (
     }
 
     // Compare query embedding with all stored file embeddings
+    logInfo('Calculating similarity scores for all files...')
     const results = files.map((file) => {
       // Guard against missing embeddings
       if (!file.embedding) {
@@ -189,6 +236,10 @@ export const handleSearch = async (
       const content = file.content || ''
       const matches = countMatches(content, query)
 
+      logInfo(
+        `File: "${file.filename}" | Similarity: ${similarity.toFixed(4)} | Matches: ${matches}`
+      )
+
       return {
         filename: file.filename,
         similarity,
@@ -199,23 +250,46 @@ export const handleSearch = async (
 
     // Sort results by similarity score (descending - highest similarity first)
     // Filter out results below the 0.25 similarity threshold
-    const filteredResults = results
-      .sort((a, b) => b.similarity - a.similarity)
+    const sortedResults = results.sort((a, b) => b.similarity - a.similarity)
+    logInfo(`Results before filtering (threshold: 0.25): ${sortedResults.length}`)
+
+    const filteredResults = sortedResults
       .filter(result => result.similarity >= 0.25)
       .map(({ filename, excerpt, matches }) => ({ filename, excerpt, matches }))
 
+    logInfo(`Results after filtering: ${filteredResults.length}`)
+
     // Return results with optional message
     if (filteredResults.length === 0) {
-      res.json({
+      logInfo(`No results found for query: "${query}"`)
+      const responsePayload = {
         results: [],
         message: `No results found for '${query}'`
-      })
+      }
+      logInfo('Sending empty results response', { payload: responsePayload })
+      res.json(responsePayload)
+      logInfo('Response sent successfully')
     } else {
-      res.json({ results: filteredResults })
+      logInfo(
+        `Returning ${filteredResults.length} result(s) for query: "${query}"`,
+        { filenames: filteredResults.map(r => r.filename) }
+      )
+      const responsePayload = { results: filteredResults }
+      logInfo('Sending search results response', {
+        resultCount: filteredResults.length,
+        payloadSize: JSON.stringify(responsePayload).length
+      })
+      res.json(responsePayload)
+      logInfo('Response sent successfully')
     }
   } catch (error) {
     // Log and return a 500 error if anything unexpected happens
-    logError('Search failed: Unexpected error', error)
+    logError('Search failed: Unexpected error', {
+      error,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined
+    })
     res
       .status(500)
       .json({ error: 'An unexpected error occurred during search.' })
