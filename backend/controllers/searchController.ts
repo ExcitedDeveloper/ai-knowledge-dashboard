@@ -248,16 +248,35 @@ export const handleSearch = async (
       }
     })
 
-    // Sort results by similarity score (descending - highest similarity first)
-    // Filter out results below the 0.25 similarity threshold
-    const sortedResults = results.sort((a, b) => b.similarity - a.similarity)
-    logInfo(`Results before filtering (threshold: 0.25): ${sortedResults.length}`)
+    // Hybrid search: Include results that meet EITHER criteria:
+    // 1. Semantic similarity >= 0.25, OR
+    // 2. Contains exact text matches (matches > 0)
+    const SIMILARITY_THRESHOLD = 0.25
 
-    const filteredResults = sortedResults
-      .filter(result => result.similarity >= 0.25)
+    logInfo(`Results before filtering: ${results.length}`)
+    logInfo(`Hybrid search criteria: similarity >= ${SIMILARITY_THRESHOLD} OR exact matches > 0`)
+
+    const filteredResults = results
+      .filter(result => {
+        const passesSimilarity = result.similarity >= SIMILARITY_THRESHOLD
+        const hasExactMatches = result.matches > 0
+        const included = passesSimilarity || hasExactMatches
+
+        logInfo(`File: "${result.filename}" | Similarity: ${result.similarity.toFixed(4)} | Matches: ${result.matches} | Included: ${included} (similarity: ${passesSimilarity}, exactMatch: ${hasExactMatches})`)
+
+        return included
+      })
+      .sort((a, b) => {
+        // Primary sort: by number of exact matches (descending)
+        if (a.matches !== b.matches) {
+          return b.matches - a.matches
+        }
+        // Secondary sort: by similarity score (descending)
+        return b.similarity - a.similarity
+      })
       .map(({ filename, excerpt, matches }) => ({ filename, excerpt, matches }))
 
-    logInfo(`Results after filtering: ${filteredResults.length}`)
+    logInfo(`Results after hybrid filtering: ${filteredResults.length}`)
 
     // Return results with optional message
     if (filteredResults.length === 0) {
