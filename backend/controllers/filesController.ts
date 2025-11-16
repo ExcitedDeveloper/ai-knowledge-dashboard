@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { UploadedFile } from '../lib/store.js'
-import { logInfo, logError } from '../utils/logger.js'
+import { logError } from '../utils/logger.js'
 import { supabase } from '../supabase/supabaseClient.js'
 import { UUID } from 'crypto'
 
@@ -48,8 +48,6 @@ export const deleteFile = async (id: UUID): Promise<void> => {
 }
 
 export const getFiles = async (): Promise<UploadedFile[]> => {
-  logInfo('Files list requested')
-
   try {
     const { data, error } = await supabase
       .from('files')

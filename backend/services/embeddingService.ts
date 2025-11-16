@@ -1,5 +1,5 @@
 import { CohereClient } from 'cohere-ai'
-import { logInfo, logError } from '../utils/logger.js'
+import { logError } from '../utils/logger.js'
 
 /**
  * Creates an embedding vector for the given text using Cohere's embedding model.
