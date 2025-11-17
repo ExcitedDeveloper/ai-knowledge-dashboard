@@ -151,7 +151,10 @@ describe('uploadController', () => {
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
         expect(mockStatus).toHaveBeenCalledWith(500)
-        expect(mockJson).toHaveBeenCalledWith({ error: 'Server error' })
+        expect(mockJson).toHaveBeenCalledWith({
+          error: 'Server error',
+          details: 'PDF parsing failed'
+        })
         expect(mockAddFile).not.toHaveBeenCalled()
       })
     })
@@ -212,7 +215,10 @@ describe('uploadController', () => {
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
         expect(mockStatus).toHaveBeenCalledWith(500)
-        expect(mockJson).toHaveBeenCalledWith({ error: 'Server error' })
+        expect(mockJson).toHaveBeenCalledWith({
+          error: 'Server error',
+          details: 'Word parsing failed'
+        })
         expect(mockAddFile).not.toHaveBeenCalled()
       })
     })
@@ -272,7 +278,10 @@ describe('uploadController', () => {
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
         expect(mockStatus).toHaveBeenCalledWith(500)
-        expect(mockJson).toHaveBeenCalledWith({ error: 'Server error' })
+        expect(mockJson).toHaveBeenCalledWith({
+          error: 'Server error',
+          details: 'File read failed'
+        })
         expect(mockAddFile).not.toHaveBeenCalled()
       })
     })
@@ -336,7 +345,10 @@ describe('uploadController', () => {
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
         expect(mockStatus).toHaveBeenCalledWith(500)
-        expect(mockJson).toHaveBeenCalledWith({ error: 'Server error' })
+        expect(mockJson).toHaveBeenCalledWith({
+          error: 'Server error',
+          details: 'Store error'
+        })
       })
     })
 
@@ -405,7 +417,10 @@ describe('uploadController', () => {
         await handleFileUpload(mockReq as Request, mockRes as Response)
 
         expect(mockStatus).toHaveBeenCalledWith(500)
-        expect(mockJson).toHaveBeenCalledWith({ error: 'Server error' })
+        expect(mockJson).toHaveBeenCalledWith({
+          error: 'Server error',
+          details: 'Cohere API error'
+        })
         expect(mockAddFile).not.toHaveBeenCalled()
       })
     })

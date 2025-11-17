@@ -40,6 +40,7 @@ describe('API Service', () => {
       ;(fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         status: 400,
+        text: async () => JSON.stringify({ error: 'Invalid file type' }),
         json: async () => ({ error: 'Invalid file type' }),
       })
 
@@ -87,6 +88,7 @@ describe('API Service', () => {
       ;(fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         status: 500,
+        text: async () => JSON.stringify({ error: 'Server error' }),
         json: async () => ({ error: 'Server error' }),
       })
 
@@ -160,6 +162,7 @@ describe('API Service', () => {
       ;(fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         status: 400,
+        text: async () => JSON.stringify({ error: 'Invalid query' }),
         json: async () => ({ error: 'Invalid query' }),
       })
 

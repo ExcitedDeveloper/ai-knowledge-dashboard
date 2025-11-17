@@ -129,21 +129,21 @@ describe('logger', () => {
 
       logError('Error occurred', error)
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(error)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(JSON.stringify(error, null, 2))
     })
 
     it('should handle non-Error object', () => {
       const errorObj = { code: 500, message: 'Server error' }
       logError('Error occurred', errorObj)
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(errorObj)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(JSON.stringify(errorObj, null, 2))
     })
 
     it('should handle string error', () => {
       const errorString = 'Something went wrong'
       logError('Error occurred', errorString)
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(errorString)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(JSON.stringify(errorString, null, 2))
     })
 
     it('should not log to console.error when error is null', () => {
