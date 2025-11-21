@@ -1,30 +1,46 @@
-import React from 'react'
+import React from 'react';
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost'
-  size?: 'sm' | 'md' | 'lg'
-  loading?: boolean
-  children: React.ReactNode
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
+  children: React.ReactNode;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', size = 'md', loading = false, disabled, children, className = '', ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium transition-all focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
+  (
+    {
+      variant = 'primary',
+      size = 'md',
+      loading = false,
+      disabled,
+      children,
+      className = '',
+      ...props
+    },
+    ref
+  ) => {
+    const baseStyles =
+      'inline-flex items-center justify-center gap-2 font-medium transition-all focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
     const variantStyles = {
-      primary: 'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)] active:scale-[0.98] focus-visible:outline-[var(--color-primary)] shadow-[var(--shadow-primary)] hover:shadow-[var(--shadow-primary-hover)]',
-      secondary: 'bg-transparent border-2 border-[var(--color-accent-clay)] text-[var(--color-accent-clay)] hover:bg-[var(--color-accent-sand)] active:border-[#755D4E]',
-      ghost: 'bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-background-tertiary)] active:bg-[var(--color-accent-sand)]'
-    }
+      primary:
+        'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)] active:scale-[0.98] focus-visible:outline-[var(--color-primary)] shadow-[var(--shadow-primary)] hover:shadow-[var(--shadow-primary-hover)]',
+      secondary:
+        'bg-transparent border-2 border-[var(--color-accent-clay)] text-[var(--color-accent-clay)] hover:bg-[var(--color-accent-sand)] active:border-[#755D4E]',
+      ghost:
+        'bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-background-tertiary)] active:bg-[var(--color-accent-sand)]',
+    };
 
     const sizeStyles = {
       sm: 'h-10 px-4 text-sm rounded-lg',
       md: 'h-11 px-6 text-base rounded-3xl md:h-[44px]',
-      lg: 'h-12 px-6 text-base rounded-3xl'
-    }
+      lg: 'h-12 px-6 text-base rounded-3xl',
+    };
 
     // Adjust radius for ghost buttons
-    const radiusOverride = variant === 'ghost' ? 'rounded-lg' : ''
+    const radiusOverride = variant === 'ghost' ? 'rounded-lg' : '';
 
     return (
       <button
@@ -59,8 +75,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         {children}
       </button>
-    )
+    );
   }
-)
+);
 
-Button.displayName = 'Button'
+Button.displayName = 'Button';

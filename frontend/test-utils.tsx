@@ -1,5 +1,5 @@
-import { render, RenderOptions } from '@testing-library/react'
-import { ReactElement } from 'react'
+import { render, RenderOptions } from '@testing-library/react';
+import { ReactElement } from 'react';
 
 // Custom render function that can be extended with providers
 const customRender = (
@@ -8,18 +8,18 @@ const customRender = (
 ) => {
   // Add any global providers here (e.g., theme providers, context providers)
   const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
-    return <>{children}</>
-  }
+    return <>{children}</>;
+  };
 
-  return render(ui, { wrapper: AllTheProviders, ...options })
-}
+  return render(ui, { wrapper: AllTheProviders, ...options });
+};
 
 // Mock data generators
 export const mockUser = {
   id: '1',
   name: 'Test User',
   email: 'test@example.com',
-}
+};
 
 export const mockFile = {
   id: '1',
@@ -27,8 +27,8 @@ export const mockFile = {
   size: 1024,
   type: 'application/pdf',
   uploadedAt: new Date().toISOString(),
-}
+};
 
 // Re-export everything
-export * from '@testing-library/react'
-export { customRender as render }
+export * from '@testing-library/react';
+export { customRender as render };

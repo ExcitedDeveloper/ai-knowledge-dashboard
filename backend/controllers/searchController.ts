@@ -5,13 +5,12 @@
  * Provides utilities for query matching, excerpt creation, and highlighting.
  */
 
-import { UploadedFile } from '../lib/store.js'
-import { Request, Response } from 'express'
-import { SearchQuery } from '../types/search.js'
-import { logError } from '../utils/logger.js'
-import { createEmbedding } from '../services/embeddingService.js'
-import { cosineSimilarity } from '../utils/math.js'
-import { supabase } from '../supabase/supabaseClient.js'
+import { Request, Response } from 'express';
+import { SearchQuery } from '../types/search.js';
+import { logError } from '../utils/logger.js';
+import { createEmbedding } from '../services/embeddingService.js';
+import { cosineSimilarity } from '../utils/math.js';
+import { supabase } from '../supabase/supabaseClient.js';
 
 /**
  * Escapes special regular expression characters in a string
@@ -19,8 +18,8 @@ import { supabase } from '../supabase/supabaseClient.js'
  * @returns The escaped text safe for use in regex patterns
  */
 export const escapeRegex = (text: string): string => {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
 
 /**
  * Highlights all occurrences of the search query in an excerpt
@@ -30,13 +29,13 @@ export const escapeRegex = (text: string): string => {
  */
 export const highlight = (excerpt: string, query: string): string => {
   // Case-insensitive regex for the query
-  const regex = new RegExp('(' + escapeRegex(query) + ')', 'gi')
+  const regex = new RegExp('(' + escapeRegex(query) + ')', 'gi');
 
   // Replace matches with <mark>...</mark> for highlighting
-  const highlighted = excerpt.replace(regex, '<mark>$1</mark>')
+  const highlighted = excerpt.replace(regex, '<mark>$1</mark>');
 
-  return highlighted
-}
+  return highlighted;
+};
 
 /**
  * Creates a contextual excerpt from a document containing the search query
@@ -46,44 +45,44 @@ export const highlight = (excerpt: string, query: string): string => {
  */
 export const createExcerpt = (documentText: string, query: string): string => {
   // 1. Normalize text and query for case-insensitive search
-  const lowerText = documentText.toLowerCase()
-  const lowerQuery = query.toLowerCase()
+  const lowerText = documentText.toLowerCase();
+  const lowerQuery = query.toLowerCase();
 
   // 2. Find the first occurrence of the query in the text
-  const index = lowerText.indexOf(lowerQuery)
+  const index = lowerText.indexOf(lowerQuery);
 
   if (index == -1) {
     // If no match, return just the first ~200 characters as fallback
-    return documentText.substring(0, 200) + '...'
+    return documentText.substring(0, 200) + '...';
   }
 
   // 3. Define how much text we want around the match
-  const contextLength = 50 // characters before and after
+  const contextLength = 50; // characters before and after
 
   // 4. Calculate start and end positions
-  const start = Math.max(0, index - contextLength)
+  const start = Math.max(0, index - contextLength);
   const end = Math.min(
     documentText.length,
     index + query.length + contextLength
-  )
+  );
 
   // 5. Extract the substring
-  let excerpt = documentText.substring(start, end)
+  let excerpt = documentText.substring(start, end);
 
   // 6. Add ellipses to show it's a partial snippet
   if (start > 0) {
-    excerpt = '...' + excerpt
+    excerpt = '...' + excerpt;
   }
 
   if (end < documentText.length) {
-    excerpt = excerpt + '...'
+    excerpt = excerpt + '...';
   }
 
   // 7. (Optional) Highlight the matched query
-  excerpt = highlight(excerpt, query)
+  excerpt = highlight(excerpt, query);
 
-  return excerpt
-}
+  return excerpt;
+};
 
 /**
  * Counts the number of times a query appears in the text (case-insensitive)
@@ -92,22 +91,22 @@ export const createExcerpt = (documentText: string, query: string): string => {
  * @returns The number of matches found
  */
 export const countMatches = (text: string, query: string): number => {
-  const regex = new RegExp(escapeRegex(query), 'gi')
-  const matches = text.match(regex)
-  return matches ? matches.length : 0
-}
+  const regex = new RegExp(escapeRegex(query), 'gi');
+  const matches = text.match(regex);
+  return matches ? matches.length : 0;
+};
 
 /**
  * Represents a single search result
  */
 export type SearchResult = {
   /** The name of the file containing matches */
-  filename: string
+  filename: string;
   /** A contextual excerpt with highlighted matches */
-  excerpt: string
+  excerpt: string;
   /** The number of times the query appears in the file */
-  matches: number
-}
+  matches: number;
+};
 
 /**
  * Handles search requests for uploaded files
@@ -116,115 +115,135 @@ export type SearchResult = {
  * @param res - Express response containing search results or error
  */
 export const handleSearch = async (
-  req: Request<{}, {}, {}, SearchQuery>,
+  req: Request<
+    Record<string, never>,
+    Record<string, never>,
+    Record<string, never>,
+    SearchQuery
+  >,
   res: Response
 ): Promise<void> => {
   // Validate that a non-empty search query was provided
   if (!req.query.q || req.query.q.trim() === '') {
-    res.status(400).json({ error: 'Missing or empty search query.' })
-    return
+    res.status(400).json({ error: 'Missing or empty search query.' });
+    return;
   }
 
   try {
-    const query = req.query.q
+    const query = req.query.q;
 
     // Fetch all files from Supabase
     const { data: files, error: fetchError } = await supabase
       .from('files')
-      .select('*')
+      .select('*');
 
     if (fetchError) {
-      logError('Failed to fetch files from Supabase', fetchError)
-      res.status(500).json({ error: 'Failed to retrieve files for search' })
-      return
+      logError('Failed to fetch files from Supabase', fetchError);
+      res.status(500).json({ error: 'Failed to retrieve files for search' });
+      return;
     }
 
     // Return empty results if no files have been uploaded yet
     if (!files || files.length === 0) {
-      res.json({ results: [], message: 'No documents available to search' })
-      return
+      res.json({ results: [], message: 'No documents available to search' });
+      return;
     }
 
     // Generate embedding for the query using Cohere
-    let queryEmbedding: number[]
+    let queryEmbedding: number[];
     try {
-      queryEmbedding = await createEmbedding(query)
+      queryEmbedding = await createEmbedding(query);
 
       // Validate embedding format
       if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
-        throw new Error('Invalid embedding format received from service')
+        throw new Error('Invalid embedding format received from service');
       }
     } catch (embeddingError) {
-      logError('Failed to generate query embedding', embeddingError)
+      logError('Failed to generate query embedding', embeddingError);
       res.status(500).json({
-        error: 'Failed to process search query. Please try again.'
-      })
-      return
+        error: 'Failed to process search query. Please try again.',
+      });
+      return;
     }
 
     // Compare query embedding with all stored file embeddings
     const results = files.map((file) => {
       // Guard against missing embeddings
       if (!file.embedding) {
-        return { filename: file.filename, similarity: 0, excerpt: '', matches: 0 }
+        return {
+          filename: file.filename,
+          similarity: 0,
+          excerpt: '',
+          matches: 0,
+        };
       }
 
       // Parse embedding if it's a string (Supabase returns vectors as strings)
-      const embedding = typeof file.embedding === 'string'
-        ? JSON.parse(file.embedding)
-        : file.embedding
+      const embedding =
+        typeof file.embedding === 'string'
+          ? JSON.parse(file.embedding)
+          : file.embedding;
 
       // Validate embedding dimensions match
       if (embedding.length !== queryEmbedding.length) {
-        return { filename: file.filename, similarity: 0, excerpt: '', matches: 0 }
+        return {
+          filename: file.filename,
+          similarity: 0,
+          excerpt: '',
+          matches: 0,
+        };
       }
 
-      const similarity = cosineSimilarity(queryEmbedding, embedding)
-      const content = file.content || ''
-      const matches = countMatches(content, query)
+      const similarity = cosineSimilarity(queryEmbedding, embedding);
+      const content = file.content || '';
+      const matches = countMatches(content, query);
 
       return {
         filename: file.filename,
         similarity,
         excerpt: createExcerpt(content, query),
         matches,
-      }
-    })
+      };
+    });
 
     // Hybrid search: Include results that meet EITHER criteria:
     // 1. Semantic similarity >= 0.25, OR
     // 2. Contains exact text matches (matches > 0)
-    const SIMILARITY_THRESHOLD = 0.25
+    const SIMILARITY_THRESHOLD = 0.25;
 
     const filteredResults = results
-      .filter(result => {
-        const passesSimilarity = result.similarity >= SIMILARITY_THRESHOLD
-        const hasExactMatches = result.matches > 0
-        return passesSimilarity || hasExactMatches
+      .filter((result) => {
+        const passesSimilarity = result.similarity >= SIMILARITY_THRESHOLD;
+        const hasExactMatches = result.matches > 0;
+        return passesSimilarity || hasExactMatches;
       })
       .sort((a, b) => {
         // Primary sort: by number of exact matches (descending)
         if (a.matches !== b.matches) {
-          return b.matches - a.matches
+          return b.matches - a.matches;
         }
         // Secondary sort: by similarity score (descending)
-        return b.similarity - a.similarity
+        return b.similarity - a.similarity;
       })
-      .map(({ filename, excerpt, matches }) => ({ filename, excerpt, matches }))
+      .map(({ filename, excerpt, matches }) => ({
+        filename,
+        excerpt,
+        matches,
+      }));
 
     // Return results with optional message
     if (filteredResults.length === 0) {
       res.json({
         results: [],
-        message: `No results found for '${query}'`
-      })
+        message: `No results found for '${query}'`,
+      });
     } else {
-      res.json({ results: filteredResults })
+      res.json({ results: filteredResults });
     }
   } catch (error) {
-    logError('Search failed: Unexpected error', error)
+    logError('Search failed: Unexpected error', error);
     res
       .status(500)
-      .json({ error: 'An unexpected error occurred during search.' })
+      .json({ error: 'An unexpected error occurred during search.' });
   }
-}
+};

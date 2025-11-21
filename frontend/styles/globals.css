@@ -1,24 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Crimson+Pro:wght@400;600;700&display=swap');
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --color-terracotta: #D4816D;
-  --color-terracotta-dark: #C67161;
-  --color-cream-soft: #F9F6F2;
-  --color-charcoal: #2D2D2D;
-  --color-sage: #8FA88E;
-  --color-clay: #8B6F5E;
-  --color-sand-warm: #E8DED2;
-  --color-sunset: #E89B6D;
-  --color-teal-deep: #5B8A8A;
-  --color-blush: #E8C4B8;
-  --color-sky: #A8C5D1;
-  --color-success: #7BA877;
-  --color-warning: #E8AE6D;
-  --color-error: #D47B6D;
-  --color-text-primary: #2D2D2D;
-  --color-text-secondary: #6B6560;
-  --color-text-tertiary: #A39A92;
+  --color-terracotta: #d4816d;
+  --color-terracotta-dark: #c67161;
+  --color-cream-soft: #f9f6f2;
+  --color-charcoal: #2d2d2d;
+  --color-sage: #8fa88e;
+  --color-clay: #8b6f5e;
+  --color-sand-warm: #e8ded2;
+  --color-sunset: #e89b6d;
+  --color-teal-deep: #5b8a8a;
+  --color-blush: #e8c4b8;
+  --color-sky: #a8c5d1;
+  --color-success: #7ba877;
+  --color-warning: #e8ae6d;
+  --color-error: #d47b6d;
+  --color-text-primary: #2d2d2d;
+  --color-text-secondary: #6b6560;
+  --color-text-tertiary: #a39a92;
 
   --font-family-sans: Inter, -apple-system, system-ui, sans-serif;
   --font-family-serif: 'Crimson Pro', Georgia, serif;

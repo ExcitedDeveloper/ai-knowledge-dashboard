@@ -1,51 +1,51 @@
-import React from 'react'
-import { render, screen } from '@testing-library/react'
-import { userEvent } from '@testing-library/user-event'
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { userEvent } from '@testing-library/user-event';
 
 // Example test to demonstrate testing patterns
 describe('Example Test Suite', () => {
   test('should render a simple component', () => {
-    const TestComponent = () => <div>Hello Test</div>
+    const TestComponent = () => <div>Hello Test</div>;
 
-    render(<TestComponent />)
+    render(<TestComponent />);
 
-    expect(screen.getByText('Hello Test')).toBeInTheDocument()
-  })
+    expect(screen.getByText('Hello Test')).toBeInTheDocument();
+  });
 
   test('should handle user interactions', async () => {
-    const user = userEvent.setup()
-    const handleClick = jest.fn()
+    const user = userEvent.setup();
+    const handleClick = jest.fn();
 
     const ButtonComponent = ({ onClick }: { onClick: () => void }) => (
       <button onClick={onClick}>Click me</button>
-    )
+    );
 
-    render(<ButtonComponent onClick={handleClick} />)
+    render(<ButtonComponent onClick={handleClick} />);
 
-    const button = screen.getByRole('button', { name: /click me/i })
-    await user.click(button)
+    const button = screen.getByRole('button', { name: /click me/i });
+    await user.click(button);
 
-    expect(handleClick).toHaveBeenCalledTimes(1)
-  })
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
 
   test('should handle async operations', async () => {
     const AsyncComponent = () => {
-      const [data, setData] = React.useState<string>('')
+      const [data, setData] = React.useState<string>('');
 
       React.useEffect(() => {
         // Simulate async data loading
-        setTimeout(() => setData('Loaded data'), 100)
-      }, [])
+        setTimeout(() => setData('Loaded data'), 100);
+      }, []);
 
-      return <div>{data || 'Loading...'}</div>
-    }
+      return <div>{data || 'Loading...'}</div>;
+    };
 
-    render(<AsyncComponent />)
+    render(<AsyncComponent />);
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
 
     // Wait for async operation to complete
-    await screen.findByText('Loaded data')
-    expect(screen.getByText('Loaded data')).toBeInTheDocument()
-  })
-})
+    await screen.findByText('Loaded data');
+    expect(screen.getByText('Loaded data')).toBeInTheDocument();
+  });
+});

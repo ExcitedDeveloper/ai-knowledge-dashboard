@@ -34,16 +34,14 @@ export default {
       statements: 80,
     },
   },
-  testMatch: [
-    '**/*.(test|spec).(js|ts)',
-  ],
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/dist/',
-  ],
+  testMatch: ['**/*.(test|spec).(js|ts)'],
+  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   transform: {
-    '^.+\\.ts$': ['ts-jest', {
-      useESM: true,
-    }],
+    '^.+\\.ts$': [
+      'ts-jest',
+      {
+        useESM: true,
+      },
+    ],
   },
-}
+};

@@ -1,11 +1,11 @@
-import React from 'react'
+import React from 'react';
 
 export interface CardProps {
-  variant?: 'default' | 'elevated' | 'flat'
-  padding?: 'none' | 'sm' | 'md' | 'lg'
-  className?: string
-  children: React.ReactNode
-  onClick?: () => void
+  variant?: 'default' | 'elevated' | 'flat';
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+  className?: string;
+  children: React.ReactNode;
+  onClick?: () => void;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -13,26 +13,28 @@ export const Card: React.FC<CardProps> = ({
   padding = 'lg',
   className = '',
   children,
-  onClick
+  onClick,
 }) => {
-  const baseStyles = 'bg-white rounded-2xl transition-all duration-200'
+  const baseStyles = 'bg-white rounded-2xl transition-all duration-200';
 
   const variantStyles = {
-    default: 'border border-[var(--color-border-light)] shadow-[var(--shadow-sm)]',
-    elevated: 'border border-[var(--color-border-light)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)]',
-    flat: 'border border-[var(--color-border-light)]'
-  }
+    default:
+      'border border-[var(--color-border-light)] shadow-[var(--shadow-sm)]',
+    elevated:
+      'border border-[var(--color-border-light)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)]',
+    flat: 'border border-[var(--color-border-light)]',
+  };
 
   const paddingStyles = {
     none: '',
     sm: 'p-3',
     md: 'p-4',
-    lg: 'p-5'
-  }
+    lg: 'p-5',
+  };
 
   const interactiveStyles = onClick
     ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-[var(--shadow-lg)]'
-    : ''
+    : '';
 
   return (
     <div
@@ -40,14 +42,18 @@ export const Card: React.FC<CardProps> = ({
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onClick()
-        }
-      } : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
     >
       {children}
     </div>
-  )
-}
+  );
+};

@@ -1,8 +1,8 @@
-import { Router } from 'express'
-import multer from 'multer'
-import { handleFileUpload } from '../controllers/uploadController.js'
+import { Router } from 'express';
+import multer from 'multer';
+import { handleFileUpload } from '../controllers/uploadController.js';
 
-const router = Router()
+const router = Router();
 
 // Configure multer to save uploaded files to /uploads
 const upload = multer({
@@ -10,9 +10,9 @@ const upload = multer({
   limits: {
     fileSize: 2 * 1024 * 1024, // 2MB in bytes
   },
-})
+});
 
 // POST /api/upload
-router.post('/', upload.single('file'), handleFileUpload)
+router.post('/', upload.single('file'), handleFileUpload);
 
-export default router
+export default router;

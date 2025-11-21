@@ -1,8 +1,8 @@
 // Global test setup
-process.env.NODE_ENV = 'test'
+process.env.NODE_ENV = 'test';
 
 // Mock environment variables for testing
-process.env.PORT = '3001'
+process.env.PORT = '3001';
 
 // Global test utilities and mocks can be added here
 global.console = {
@@ -13,4 +13,4 @@ global.console = {
   info: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),
-}
+};

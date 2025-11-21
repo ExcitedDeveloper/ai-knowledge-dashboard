@@ -21,24 +21,24 @@
 export function cosineSimilarity(a: number[], b: number[]): number {
   // Validate inputs
   if (!a || !b || a.length === 0 || b.length === 0) {
-    return 0
+    return 0;
   }
 
   if (a.length !== b.length) {
-    return 0
+    return 0;
   }
 
   // Calculate dot product
-  const dot = a.reduce((sum, val, i) => sum + val * b[i], 0)
+  const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
 
   // Calculate magnitudes
-  const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0))
-  const magB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0))
+  const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+  const magB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
 
   // Handle zero magnitude vectors (avoid division by zero)
   if (magA === 0 || magB === 0) {
-    return 0
+    return 0;
   }
 
-  return dot / (magA * magB)
+  return dot / (magA * magB);
 }

@@ -1,11 +1,11 @@
-import { Request, Response } from 'express'
-import fs from 'fs'
-import { PDFParse } from 'pdf-parse'
-import mammoth from 'mammoth'
-import { UploadedFile } from '../lib/store.js'
-import { addFile, validateFile } from './filesController.js'
-import { logError } from '../utils/logger.js'
-import { createEmbedding } from '../services/embeddingService.js'
+import { Request, Response } from 'express';
+import fs from 'fs';
+import { PDFParse } from 'pdf-parse';
+import mammoth from 'mammoth';
+import { UploadedFile } from '../lib/store.js';
+import { addFile, validateFile } from './filesController.js';
+import { logError } from '../utils/logger.js';
+import { createEmbedding } from '../services/embeddingService.js';
 
 /**
  * Constructs an UploadedFile object with metadata and embedding from the uploaded file.
@@ -19,10 +19,10 @@ const getUploadedFile = async (file: Express.Multer.File, text: string) => {
     text: text,
     timestamp: Date.now(),
     embedding: await createEmbedding(text),
-  }
+  };
 
-  return uploadedFile
-}
+  return uploadedFile;
+};
 
 /**
  * Handles file upload requests, extracts text from supported file types (PDF, DOCX, TXT), generates embeddings, and stores the file data.
@@ -31,46 +31,46 @@ const getUploadedFile = async (file: Express.Multer.File, text: string) => {
  */
 export const handleFileUpload = async (req: Request, res: Response) => {
   try {
-    const file: Express.Multer.File | undefined = req.file
+    const file: Express.Multer.File | undefined = req.file;
 
     if (!validateFile(res, file)) {
-      return
+      return;
     }
 
-    let text: string = ''
+    let text: string = '';
 
     // Determine file type and extract text
     if (file.mimetype === 'application/pdf') {
-      const dataBuffer = fs.readFileSync(file.path)
-      const parser = new PDFParse({ data: dataBuffer })
-      const pdfData = await parser.getText()
-      text = pdfData.text
+      const dataBuffer = fs.readFileSync(file.path);
+      const parser = new PDFParse({ data: dataBuffer });
+      const pdfData = await parser.getText();
+      text = pdfData.text;
     } else if (
       file.mimetype ===
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ) {
-      const result = await mammoth.extractRawText({ path: file.path })
-      text = result.value
+      const result = await mammoth.extractRawText({ path: file.path });
+      text = result.value;
     } else if (file.mimetype === 'text/plain') {
-      text = fs.readFileSync(file.path, 'utf-8')
+      text = fs.readFileSync(file.path, 'utf-8');
     } else {
-      return res.status(400).json({ error: 'Unsupported file type' })
+      return res.status(400).json({ error: 'Unsupported file type' });
     }
 
-    const uploadedFile = await getUploadedFile(file, text)
+    const uploadedFile = await getUploadedFile(file, text);
 
     // Save uploaded file information to Supabase
-    await addFile(uploadedFile, file.mimetype)
+    await addFile(uploadedFile, file.mimetype);
 
     // Return success response with extracted text
     res.status(200).json({
       filename: file.originalname,
       text: text,
       embedding: uploadedFile.embedding,
-    })
+    });
   } catch (err) {
-    logError('Upload failed: Server error', err)
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-    res.status(500).json({ error: 'Server error', details: errorMessage })
+    logError('Upload failed: Server error', err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: 'Server error', details: errorMessage });
   }
-}
+};
