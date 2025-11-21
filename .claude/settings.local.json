@@ -22,7 +22,9 @@
       "Bash(cat:*)",
       "Bash(find:*)",
       "Bash(git log:*)",
-      "Bash(timeout 5 npm start)"
+      "Bash(timeout 5 npm start)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
