@@ -24,7 +24,8 @@
       "Bash(git log:*)",
       "Bash(timeout 5 npm start)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "WebFetch(domain:react-hot-toast.com)"
     ],
     "deny": [],
     "ask": []
