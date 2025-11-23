@@ -13,6 +13,7 @@ import { uploadFile, getFiles, searchFiles, deleteFile } from '../services/api';
 import type { UploadedFile, SearchResult } from '../types/api';
 import { Button } from './Button';
 import { Card } from './Card';
+import { SearchResultCard } from './SearchResultCard';
 
 const Dashboard: React.FC = () => {
   // State management
@@ -689,49 +690,13 @@ const Dashboard: React.FC = () => {
                 </div>
               </Card>
             ) : searchResults && searchResults.length > 0 ? (
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {searchResults.map((result, index) => (
-                  <Card
+                  <SearchResultCard
                     key={`${result.filename}-${index}`}
-                    variant="elevated"
-                    padding="lg"
-                  >
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg"
-                          style={{
-                            backgroundColor: 'var(--color-background-tertiary)',
-                          }}
-                        >
-                          <FileText
-                            className="h-5 w-5"
-                            style={{ color: 'var(--color-primary)' }}
-                          />
-                        </div>
-                        <h3
-                          className="heading-small"
-                          style={{ color: 'var(--color-text-primary)' }}
-                        >
-                          {result.filename}
-                        </h3>
-                      </div>
-                      <span
-                        className="caption flex-shrink-0 rounded-full px-3 py-1"
-                        style={{
-                          backgroundColor: 'var(--color-background-tertiary)',
-                          color: 'var(--color-primary)',
-                        }}
-                      >
-                        {result.matches} match{result.matches !== 1 ? 'es' : ''}
-                      </span>
-                    </div>
-                    <div
-                      className="body-small"
-                      style={{ color: 'var(--color-text-secondary)' }}
-                      dangerouslySetInnerHTML={{ __html: result.excerpt }}
-                    />
-                  </Card>
+                    result={result}
+                    index={index}
+                  />
                 ))}
               </div>
             ) : searchQuery ? (

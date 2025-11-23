@@ -38,3 +38,12 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Highlighted text styling for search results */
+mark {
+  background-color: #fef3c7;
+  color: var(--color-text-primary);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}

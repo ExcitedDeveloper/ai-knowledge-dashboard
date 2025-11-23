@@ -3,6 +3,14 @@ import type {
   UploadedFile,
   SearchResponse,
 } from '../types/api';
+import * as mockApi from './mockApi';
+
+// Check if we should use mock API
+const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
+
+if (USE_MOCK_API) {
+  console.log('[API] Using MOCK API - no backend required');
+}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -20,6 +28,10 @@ class ApiError extends Error {
  * Upload a file to the backend
  */
 export const uploadFile = async (file: File): Promise<UploadResponse> => {
+  if (USE_MOCK_API) {
+    return mockApi.uploadFile(file);
+  }
+
   const formData = new FormData();
   formData.append('file', file);
 
@@ -54,6 +66,10 @@ export const uploadFile = async (file: File): Promise<UploadResponse> => {
  * Get all uploaded files
  */
 export const getFiles = async (): Promise<UploadedFile[]> => {
+  if (USE_MOCK_API) {
+    return mockApi.getFiles();
+  }
+
   const response = await fetch(`${API_BASE_URL}/api/files`);
 
   if (!response.ok) {
@@ -73,6 +89,10 @@ export const getFiles = async (): Promise<UploadedFile[]> => {
  * Search files by query
  */
 export const searchFiles = async (query: string): Promise<SearchResponse> => {
+  if (USE_MOCK_API) {
+    return mockApi.searchFiles(query);
+  }
+
   if (!query.trim()) {
     return { results: [], message: 'Please enter a search query' };
   }
@@ -110,6 +130,10 @@ export const searchFiles = async (query: string): Promise<SearchResponse> => {
  * Delete a file by ID
  */
 export const deleteFile = async (id: string): Promise<void> => {
+  if (USE_MOCK_API) {
+    return mockApi.deleteFile(id);
+  }
+
   const response = await fetch(`${API_BASE_URL}/api/files/${id}`, {
     method: 'DELETE',
   });
