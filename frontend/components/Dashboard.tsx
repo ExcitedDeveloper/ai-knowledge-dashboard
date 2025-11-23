@@ -217,12 +217,16 @@ const Dashboard: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!fileToDelete?.id) return;
 
+    const fileId = fileToDelete.id;
     const filename = fileToDelete.filename;
 
+    // Close modal immediately
+    setFileToDelete(null);
+
     try {
-      setDeletingFileId(fileToDelete.id);
+      setDeletingFileId(fileId);
       setFilesError('');
-      await deleteFile(fileToDelete.id);
+      await deleteFile(fileId);
       await loadFiles();
 
       toast.success(`Successfully deleted ${filename}`);
@@ -243,7 +247,6 @@ const Dashboard: React.FC = () => {
       toast.error(`Delete failed: ${errorMessage}`);
     } finally {
       setDeletingFileId(null);
-      setFileToDelete(null);
     }
   };
 
