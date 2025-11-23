@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Trash2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { uploadFile, getFiles, searchFiles, deleteFile } from '../services/api';
 import type { UploadedFile, SearchResult } from '../types/api';
 import { Button } from './Button';
@@ -52,6 +53,7 @@ const Dashboard: React.FC = () => {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to load files';
       setFilesError(errorMessage);
+      toast.error(`Network error: ${errorMessage}`);
     } finally {
       setIsLoadingFiles(false);
     }
@@ -70,6 +72,8 @@ const Dashboard: React.FC = () => {
         await uploadFile(file);
         await loadFiles();
 
+        toast.success(`Successfully uploaded ${file.name}`);
+
         // Clear search input after successful upload
         setSearchQuery('');
         setSearchResults([]);
@@ -83,6 +87,7 @@ const Dashboard: React.FC = () => {
         const errorMessage =
           error instanceof Error ? error.message : 'Upload failed';
         setUploadError(errorMessage);
+        toast.error(`Upload failed: ${errorMessage}`);
       } finally {
         setIsUploading(false);
       }
@@ -142,6 +147,17 @@ const Dashboard: React.FC = () => {
 
         if (response.message) {
           setSearchMessage(response.message);
+          toast(response.message, {
+            icon: '🔍',
+          });
+        } else if (response.results.length > 0) {
+          toast.success(
+            `Found ${response.results.length} result${response.results.length !== 1 ? 's' : ''}`
+          );
+        } else {
+          toast('No results found', {
+            icon: '🔍',
+          });
         }
       }
     } catch (error) {
@@ -151,6 +167,7 @@ const Dashboard: React.FC = () => {
           error instanceof Error ? error.message : 'Search failed';
         setSearchError(errorMessage);
         setSearchResults([]);
+        toast.error(`Search failed: ${errorMessage}`);
       }
     } finally {
       // Only update loading state if this is still the current query
@@ -200,11 +217,15 @@ const Dashboard: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!fileToDelete?.id) return;
 
+    const filename = fileToDelete.filename;
+
     try {
       setDeletingFileId(fileToDelete.id);
       setFilesError('');
       await deleteFile(fileToDelete.id);
       await loadFiles();
+
+      toast.success(`Successfully deleted ${filename}`);
 
       // Clear search input after successful deletion
       setSearchQuery('');
@@ -219,6 +240,7 @@ const Dashboard: React.FC = () => {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to delete file';
       setFilesError(errorMessage);
+      toast.error(`Delete failed: ${errorMessage}`);
     } finally {
       setDeletingFileId(null);
       setFileToDelete(null);
