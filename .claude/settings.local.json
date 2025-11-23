@@ -25,7 +25,8 @@
       "Bash(timeout 5 npm start)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "WebFetch(domain:react-hot-toast.com)"
+      "WebFetch(domain:react-hot-toast.com)",
+      "Bash(timeout 5 npm run dev:mock:*)"
     ],
     "deny": [],
     "ask": []
