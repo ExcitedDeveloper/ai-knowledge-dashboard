@@ -34,6 +34,11 @@ describe('server', () => {
     // Mock cors
     jest.doMock('cors', () => jest.fn(() => 'CORS_MIDDLEWARE'));
 
+    // Mock rate limiter
+    jest.doMock('./middleware/rateLimiter', () => ({
+      publicApiLimiter: 'RATE_LIMITER',
+    }));
+
     // Mock routes
     jest.doMock('./routes/uploadRoutes', () => ({ default: 'UPLOAD_ROUTES' }));
     jest.doMock('./routes/filesRoutes', () => ({ default: 'FILES_ROUTES' }));
@@ -59,20 +64,26 @@ describe('server', () => {
     expect(mockUse).toHaveBeenCalledWith('URLENCODED_PARSER');
   });
 
-  test('should mount upload routes at /api/upload', () => {
+  test('should mount upload routes at /api/upload with rate limiter', () => {
     // Check that routes were mounted (6 calls: cors, json, urlencoded, upload, files, search)
     expect(mockUse).toHaveBeenCalledTimes(6);
     expect(mockUse.mock.calls[3][0]).toBe('/api/upload');
+    expect(mockUse.mock.calls[3][1]).toBe('RATE_LIMITER');
+    expect(mockUse.mock.calls[3][2]).toEqual({ default: 'UPLOAD_ROUTES' });
   });
 
-  test('should mount files routes at /api/files', () => {
+  test('should mount files routes at /api/files without rate limiter', () => {
     expect(mockUse).toHaveBeenCalledTimes(6);
     expect(mockUse.mock.calls[4][0]).toBe('/api/files');
+    expect(mockUse.mock.calls[4][1]).toEqual({ default: 'FILES_ROUTES' });
+    expect(mockUse.mock.calls[4]).toHaveLength(2); // No rate limiter
   });
 
-  test('should mount search routes at /api/search', () => {
+  test('should mount search routes at /api/search with rate limiter', () => {
     expect(mockUse).toHaveBeenCalledTimes(6);
     expect(mockUse.mock.calls[5][0]).toBe('/api/search');
+    expect(mockUse.mock.calls[5][1]).toBe('RATE_LIMITER');
+    expect(mockUse.mock.calls[5][2]).toEqual({ default: 'SEARCH_ROUTES' });
   });
 
   test('should start server and listen on port', () => {

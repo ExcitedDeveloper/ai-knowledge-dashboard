@@ -5,6 +5,7 @@ import cors from 'cors';
 import uploadRoutes from './routes/uploadRoutes.js';
 import filesRoutes from './routes/filesRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
+import { publicApiLimiter } from './middleware/rateLimiter.js';
 
 // Create Express application instance
 const app = express();
@@ -19,10 +20,10 @@ app.use(express.json());
 // Parse URL-encoded data (from HTML forms)
 app.use(express.urlencoded({ extended: true }));
 
-// Mount routes
-app.use('/api/upload', uploadRoutes);
+// Mount routes with rate limiting for public endpoints
+app.use('/api/upload', publicApiLimiter, uploadRoutes);
 app.use('/api/files', filesRoutes);
-app.use('/api/search', searchRoutes);
+app.use('/api/search', publicApiLimiter, searchRoutes);
 
 // Set the port from environment variable or default to 3001
 const PORT = process.env.PORT || 3001;

@@ -16,6 +16,7 @@ export default {
     'server.ts',
     'controllers/**/*.ts',
     'routes/**/*.ts',
+    'middleware/**/*.ts',
     'lib/**/*.ts',
     'utils/**/*.ts',
     'models/**/*.ts',
