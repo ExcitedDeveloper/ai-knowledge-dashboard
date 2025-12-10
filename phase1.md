@@ -541,15 +541,15 @@ export interface SearchQuery {
 
 ## Implementation Order
 
-1. ✅ Database schema (Step 1)
-2. ✅ Type definitions (Step 2)
-3. ✅ Chunking service (Step 3)
-4. ✅ Cohere service (Step 4)
-5. ✅ Agent service (Step 5)
-6. ✅ RAG orchestration (Step 6)
-7. ✅ Update upload flow (Steps 7-8)
-8. ✅ Update search endpoint (Step 9)
-9. ✅ Test end-to-end (Step 10)
+1. ✅ Database schema (Step 1) - COMPLETED
+2. ✅ Type definitions (Step 2) - COMPLETED
+3. ✅ Chunking service (Step 3) - COMPLETED
+4. ⬜ Cohere service (Step 4)
+5. ⬜ Agent service (Step 5)
+6. ⬜ RAG orchestration (Step 6)
+7. ⬜ Update upload flow (Steps 7-8)
+8. ⬜ Update search endpoint (Step 9)
+9. ⬜ Test end-to-end (Step 10)
 
 **Total implementation time estimate:** 5-9 days
 
