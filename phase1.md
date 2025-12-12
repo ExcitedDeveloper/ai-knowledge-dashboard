@@ -194,7 +194,110 @@ export const generateChatResponse = async (
 
 ---
 
-### Step 5: Agent Workflow Service
+### Step 5: Implement Rate Limiting
+
+**Create `backend/services/rateLimitService.ts`** (new file):
+
+Implements a hybrid rate limiting approach:
+1. Application-level limit: 10,000 RAG requests per month
+2. Cohere billing limit: $10/month (set in dashboard as safety net)
+
+**Database schema changes:**
+
+Execute in Supabase SQL Editor:
+
+```sql
+CREATE TABLE IF NOT EXISTS rate_limits (
+  id TEXT PRIMARY KEY,
+  request_count INTEGER DEFAULT 0,
+  period_start TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  period_end TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '1 month'),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Single row for monthly RAG quota
+INSERT INTO rate_limits (id, request_count)
+VALUES ('rag_monthly', 0)
+ON CONFLICT (id) DO NOTHING;
+
+-- Atomic increment function
+CREATE OR REPLACE FUNCTION increment_rag_count()
+RETURNS void AS $$
+BEGIN
+  UPDATE rate_limits
+  SET request_count = request_count + 1,
+      updated_at = NOW()
+  WHERE id = 'rag_monthly';
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Service implementation:**
+
+```typescript
+import { supabase } from '../supabase/supabaseClient.js';
+import { logError } from '../utils/logger.js';
+
+const MONTHLY_LIMIT = 10000;
+const RATE_LIMIT_ID = 'rag_monthly';
+
+export const trackRAGRequest = async (): Promise<void> => {
+  const { error } = await supabase.rpc('increment_rag_count');
+
+  if (error) {
+    logError('Failed to track RAG request', error);
+    // Don't throw - don't block user if rate limit tracking fails
+  }
+};
+
+export const getRemainingRequests = async (): Promise<number> => {
+  const { data, error } = await supabase
+    .from('rate_limits')
+    .select('request_count')
+    .eq('id', RATE_LIMIT_ID)
+    .single();
+
+  if (error) {
+    logError('Failed to get rate limit data', error);
+    return MONTHLY_LIMIT; // Fail open
+  }
+
+  return Math.max(0, MONTHLY_LIMIT - (data?.request_count || 0));
+};
+
+export const hasReachedLimit = async (): Promise<boolean> => {
+  const remaining = await getRemainingRequests();
+  return remaining <= 0;
+};
+
+export const resetMonthlyCounter = async (): Promise<void> => {
+  const { error } = await supabase
+    .from('rate_limits')
+    .update({
+      request_count: 0,
+      period_start: new Date().toISOString(),
+      period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', RATE_LIMIT_ID);
+
+  if (error) {
+    logError('Failed to reset monthly counter', error);
+  }
+};
+```
+
+**Cohere Dashboard Setup:**
+
+1. Go to https://dashboard.cohere.com/billing
+2. Set monthly budget limit: **$10** (safety net for ~12,000 queries with command-r)
+3. Enable email notifications at 80% and 100% of budget
+4. This prevents unexpected overages if application-level limit fails
+
+---
+
+### Step 6: Agent Workflow Service
 
 **Create `backend/services/agentService.ts`** (new file):
 
@@ -246,7 +349,7 @@ export class AgentWorkflow {
 
 ---
 
-### Step 6: RAG Orchestration Service
+### Step 7: RAG Orchestration Service
 
 **Create `backend/services/ragService.ts`** (new file):
 
@@ -296,7 +399,7 @@ export class AgentWorkflow {
 
 ---
 
-### Step 7: Update Upload Controller
+### Step 8: Update Upload Controller
 
 **Modify `backend/controllers/uploadController.ts`:**
 
@@ -334,7 +437,7 @@ import { saveChunks } from './filesController.js';
 
 ---
 
-### Step 8: Update Files Controller
+### Step 9: Update Files Controller
 
 **Modify `backend/controllers/filesController.ts`:**
 
@@ -410,7 +513,7 @@ export const saveChunks = async (
 
 ---
 
-### Step 9: Update Search Controller
+### Step 10: Update Search Controller
 
 **Modify `backend/controllers/searchController.ts`:**
 
@@ -432,12 +535,35 @@ export const handleSearch = async (
 
   try {
     if (enableRAG) {
+      // NEW: Check rate limit before processing
+      if (await hasReachedLimit()) {
+        const remaining = await getRemainingRequests();
+        res.status(429).json({
+          error: 'Monthly RAG query limit reached',
+          limit: 10000,
+          remaining: 0,
+          resetDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString()
+        });
+        return;
+      }
+
+      // Track this request
+      await trackRAGRequest();
+
       // NEW: RAG Mode
       const ragResponse = await performRAGSearch(query, 5);
+      const remaining = await getRemainingRequests();
 
       res.json({
         results: [],  // Empty for backward compatibility
-        rag: ragResponse,
+        rag: {
+          ...ragResponse,
+          rateLimit: {
+            limit: 10000,
+            remaining,
+            resetDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString()
+          }
+        }
       });
     } else {
       // EXISTING: Keep current implementation for legacy mode
@@ -456,6 +582,7 @@ export const handleSearch = async (
 **Add imports:**
 ```typescript
 import { performRAGSearch } from '../services/ragService.js';
+import { hasReachedLimit, trackRAGRequest, getRemainingRequests } from '../services/rateLimitService.js';
 ```
 
 **Update `SearchQuery` type in `backend/types/search.ts`:**
@@ -468,7 +595,7 @@ export interface SearchQuery {
 
 ---
 
-### Step 10: Testing
+### Step 11: Testing
 
 **Manual testing steps:**
 
@@ -507,13 +634,14 @@ export interface SearchQuery {
 
 ## Critical Files to Modify
 
-### New Files (6):
+### New Files (7):
 1. `backend/types/rag.ts` - Type definitions for RAG response structure
 2. `backend/services/chunkingService.ts` - Document chunking logic
-3. `backend/services/cohereService.ts` - Cohere Chat API wrapper
-4. `backend/services/agentService.ts` - Agent workflow tracking
-5. `backend/services/ragService.ts` - RAG orchestration (main logic)
-6. `backend/migrations/001_add_chunks_table.sql` - Database schema
+3. `backend/services/cohereService.ts` - Cohere Chat API wrapper (uses command-r model)
+4. `backend/services/rateLimitService.ts` - Rate limiting (10k requests/month)
+5. `backend/services/agentService.ts` - Agent workflow tracking
+6. `backend/services/ragService.ts` - RAG orchestration (main logic)
+7. `backend/migrations/001_add_chunks_table.sql` - Database schema
 
 ### Modified Files (5):
 1. `backend/controllers/searchController.ts:117-249` - Add RAG mode to search endpoint
@@ -531,11 +659,12 @@ export interface SearchQuery {
 | **Chunk size** | 512 tokens (~2,000 chars) | Optimal for Cohere embeddings; balances context vs. granularity |
 | **Chunk overlap** | 128 tokens (25%) | Industry standard; prevents context loss at boundaries |
 | **Top-K chunks** | 5 (configurable to 10) | ~2,500 tokens of context; leaves room for prompt + response |
-| **Cohere model** | `command-r-plus-08-2024` | Latest model; cheapest pricing ($2.50/1M input, $10/1M output); 128k context |
+| **Cohere model** | `command-r-08-2024` | Cost-effective model ($0.15/1M input, $0.60/1M output); 94% cheaper than command-r-plus; 128k context |
+| **Rate limiting** | 10,000 requests/month | Application-level cap + $10 Cohere billing limit as safety net |
 | **Similarity threshold** | 0.25 | Same as existing search; filters low-relevance chunks |
 | **RAG mode** | Opt-in (`?rag=true`) | Backward compatible; gradual rollout; zero frontend changes initially |
 
-**Estimated cost per RAG query:** ~$0.014
+**Estimated cost per RAG query:** ~$0.0008 (less than 0.1 cents with command-r)
 
 ---
 
@@ -544,12 +673,14 @@ export interface SearchQuery {
 1. ✅ Database schema (Step 1) - COMPLETED
 2. ✅ Type definitions (Step 2) - COMPLETED
 3. ✅ Chunking service (Step 3) - COMPLETED
-4. ⬜ Cohere service (Step 4)
-5. ⬜ Agent service (Step 5)
-6. ⬜ RAG orchestration (Step 6)
-7. ⬜ Update upload flow (Steps 7-8)
-8. ⬜ Update search endpoint (Step 9)
-9. ⬜ Test end-to-end (Step 10)
+4. ✅ Cohere service (Step 4) - COMPLETED (using command-r model)
+5. ⬜ Rate limiting service (Step 5) - 10k requests/month cap
+6. ⬜ Agent workflow service (Step 6)
+7. ⬜ RAG orchestration service (Step 7)
+8. ⬜ Update upload controller (Step 8)
+9. ⬜ Update files controller (Step 9)
+10. ⬜ Update search controller with RAG + rate limiting (Step 10)
+11. ⬜ Test end-to-end (Step 11)
 
 **Total implementation time estimate:** 5-9 days
 
